@@ -33,6 +33,21 @@ int get_numero_registros(FILE* arquivo){
     return n;
 }
 
+int strToInt(char *str, int tam) {
+    if(str != NULL) {
+        int n = 0;
+        int casaDec = 1;
+
+        for(int i = tam-1; i>=0; i--) {
+            n += (str[i]-'0') * casaDec;
+            casaDec *= 10;
+        }
+
+        return n;
+    }
+    return -1;
+}
+
 void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
     char* valor=(char*)malloc(sizeof(char)*20);
     int i=0;
@@ -46,7 +61,7 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
         valor[i]=aux;
         i++;
         if(i==t){
-            realloc(valor,sizeof(char)*(2*i));
+            valor = realloc(valor,sizeof(char)*(2*i));
             t=2*t;
         }
     }
@@ -55,11 +70,12 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
 
     switch(campo){
         case 1: 
-            registros[registro_atual].id=(int) valor;
+
+            registros[registro_atual].id= strToInt(valor, i);
             break;
 
         case 2: 
-            registros[registro_atual].idade = (int) valor;
+            registros[registro_atual].idade = strToInt(valor, i);
             break;
 
         case 3: 
@@ -92,10 +108,15 @@ bool reader_create_table(char* csv,char* binario){
     }
 
     for(int i = 0; i < n; i++) {
-        printf("%s\n", registros[i].nacionalidade);
+        printf("%d, ", registros[i].id);
+        printf("%d, ", registros[i].idade);
+        printf("%s, ", registros[i].nomeJogador);
+        printf("%s, ", registros[i].nacionalidade);
+        printf("%s\n", registros[i].nomeClube);
     }    
 
     free(registros);
+    return true;
 }
 
 

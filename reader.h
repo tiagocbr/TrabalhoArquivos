@@ -5,8 +5,8 @@
     #include <stdbool.h>
 
     typedef struct cabecalho CABECALHO;
-    typedef struct registro REGISTRO;
-
+    typedef struct registro REGIasd;
+    asdasdas;
     // Cria o aqruivo com os registros do csv. recebe os nomes do arquivo de
     // leitura e do de sáida, e retorna um bool para o sucesso da operação
     bool reader_create_table(char *csv, char *binario);

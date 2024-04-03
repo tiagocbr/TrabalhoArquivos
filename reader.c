@@ -92,7 +92,7 @@ bool reader_create_table(char* csv,char* binario){
     }
 
     for(int i = 0; i < n; i++) {
-        printf("%s\n", registros[i].nomeJogador);
+        printf("%s\n", registros[i].nacionalidade);
     }    
 
     free(registros);

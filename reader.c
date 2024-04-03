@@ -30,17 +30,17 @@ int get_numero_registros(FILE* arquivo){
     }
     n=n/4;
     fseek(arquivo,0,SEEK_SET);
-    return n;
+    return n++;
 }
 
 void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
     char* valor=(char*)malloc(sizeof(char)*20);
     int i=0;
     int t=20;
-    while(1){
-        fscanf(arquivo,"%c",&aux);
+    char aux;
+
+    while(fscanf(arquivo,"%c",&aux) != EOF) {
         if(aux==',' || aux=='\n'){
-            valor[i]='\0';
             break;
         }
         valor[i]=aux;
@@ -50,6 +50,9 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
             t=2*t;
         }
     }
+
+    valor[i]='\0';
+
     switch(campo){
         case 1: 
             registros[registro_atual].id=(int) valor;
@@ -80,20 +83,19 @@ bool reader_create_table(char* csv,char* binario){
     if(arquivo==NULL)return false;
     fseek(arquivo,46,SEEK_SET);
     int n=get_numero_registros(arquivo);
+
     REGISTRO* registros = (REGISTRO*)malloc(n*sizeof(REGISTRO));
     for(int registro_atual=0;registro_atual<n;registro_atual++){
         for(int i=1;i<=5;i++){
             ler_campo(arquivo,i,registro_atual,registros);
         }
     }
-    
 
+    for(int i = 0; i < n; i++) {
+        printf("%s\n", registros[i].nomeJogador);
+    }    
 
-
-
-
-
-
+    free(registros);
 }
 
 

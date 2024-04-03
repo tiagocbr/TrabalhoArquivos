@@ -51,29 +51,32 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
         }
     }
 
-    valor[i]='\0';
-
     switch(campo){
         case 1: 
-            registros[registro_atual].id=(int) valor;
+            registros[registro_atual].id = i==0 ? -1 : (int) valor;
+            free(valor);
             break;
 
         case 2: 
-            registros[registro_atual].idade = (int) valor;
+            registros[registro_atual].idade = i== 0 ? -1 : (int) valor;
+            free(valor);
             break;
 
         case 3: 
             registros[registro_atual].nomeJogador = valor;
             registros[registro_atual].tamNomeJog = i;
+            registros[registro_atual].tamanhoRegistro+=i;
             break;
 
         case 4: 
-            registros[registro_atual].nacionalidade =  valor;
+            registros[registro_atual].nacionalidade = valor;
             registros[registro_atual].tamNacionalidade = i;
+            registros[registro_atual].tamanhoRegistro+=i;
             break;
         case 5: 
             registros[registro_atual].nomeClube = valor;
             registros[registro_atual].tamNomeClube = i;
+            registros[registro_atual].tamanhoRegistro+=i;
             break;
     }
 
@@ -86,15 +89,19 @@ bool reader_create_table(char* csv,char* binario){
 
     REGISTRO* registros = (REGISTRO*)malloc(n*sizeof(REGISTRO));
     for(int registro_atual=0;registro_atual<n;registro_atual++){
+        registros[registro_atual].removido = '0';
+        registros[registro_atual].tamanhoRegistro = 33;
+        registros[registro_atual].prox = -1;
         for(int i=1;i<=5;i++){
             ler_campo(arquivo,i,registro_atual,registros);
         }
     }
 
-    for(int i = 0; i < n; i++) {
-        printf("%s\n", registros[i].nacionalidade);
-    }    
-
+    for(int i=0;i<n;i++){
+        free(registros[i].nomeJogador);
+        free(registros[i].nomeClube);
+        free(registros[i].nacionalidade);
+    }
     free(registros);
     return true;
 }

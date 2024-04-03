@@ -29,8 +29,8 @@ int get_numero_registros(FILE* arquivo){
         if(aux==',')n++;
     }
     n=n/4;
-    fseek(arquivo,0,SEEK_SET);
-    return n++;
+    fseek(arquivo,46,SEEK_SET);
+    return n;
 }
 
 void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
@@ -92,7 +92,7 @@ bool reader_create_table(char* csv,char* binario){
     }
 
     for(int i = 0; i < n; i++) {
-        printf("%s\n", registros[i].nomeJogador);
+        printf("%s\n", registros[i].nacionalidade);
     }    
 
     free(registros);

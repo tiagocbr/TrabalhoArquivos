@@ -1,10 +1,12 @@
+#include "reader.h"
+
 struct cabecalho{
     char status;
     long long topo;
     long long proxByteOffset;
     int nroRegArq;
     int nroRegRem;
-}
+};
 
 struct registro{
     char removido;
@@ -18,7 +20,7 @@ struct registro{
     char *nacionalidade; //campo 4
     int tamNomeClube;
     char *nomeClube; //campo 5
-}
+};
 
 int get_numero_registros(FILE* arquivo){
     char aux;

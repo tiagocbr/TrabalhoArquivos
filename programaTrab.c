@@ -17,6 +17,6 @@ int main() {
 
             if(!res)
                 printf("Falha no processamento do arquivo");
+            break;
     }
-    reader_create_table("jogador.csv", "binario.bin");
 }

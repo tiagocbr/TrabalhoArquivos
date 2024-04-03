@@ -29,8 +29,8 @@ int get_numero_registros(FILE* arquivo){
         if(aux==',')n++;
     }
     n=n/4;
-    fseek(arquivo,0,SEEK_SET);
-    return n++;
+    fseek(arquivo,46,SEEK_SET);
+    return n;
 }
 
 void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
@@ -46,7 +46,7 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
         valor[i]=aux;
         i++;
         if(i==t){
-            realloc(valor,sizeof(char)*(2*i));
+            valor = (char*)realloc(valor,sizeof(char)*(2*i));
             t=2*t;
         }
     }
@@ -96,6 +96,7 @@ bool reader_create_table(char* csv,char* binario){
     }    
 
     free(registros);
+    return true;
 }
 
 

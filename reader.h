@@ -4,7 +4,6 @@
     #include <stdlib.h>
     #include <stdbool.h>
 
-    typedef struct cabecalho CABECALHO;
     typedef struct registro REGISTRO;
 
     // Cria o aqruivo com os registros do csv. recebe os nomes do arquivo de

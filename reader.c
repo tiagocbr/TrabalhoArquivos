@@ -1,12 +1,5 @@
 #include "reader.h"
-
-struct cabecalho{
-    char status;
-    long long topo;
-    long long proxByteOffset;
-    int nroRegArq;
-    int nroRegRem;
-};
+#include "regCabecalho.h"
 
 struct registro{
     char removido;
@@ -34,6 +27,9 @@ int get_numero_registros(FILE* arquivo){
 }
 
 int strToInt(char *str, int tam) {
+    if(tam == 0)
+        return -1;
+
     if(str != NULL) {
         int n = 0;
         int casaDec = 1;
@@ -48,7 +44,7 @@ int strToInt(char *str, int tam) {
     return -1;
 }
 
-void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
+void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, CABECALHO *cabecalho){
     char* valor=(char*)malloc(sizeof(char)*20);
     int i=0;
     int t=20;
@@ -68,12 +64,12 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
 
     switch(campo){
         case 1: 
-            registros[registro_atual].id = i==0 ? -1 : (int) valor;
+            registros[registro_atual].id = strToInt(valor, i);
             free(valor);
             break;
 
         case 2: 
-            registros[registro_atual].idade = i== 0 ? -1 : (int) valor;
+            registros[registro_atual].idade = strToInt(valor, i);
             free(valor);
             break;
 
@@ -92,25 +88,58 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros){
             registros[registro_atual].nomeClube = valor;
             registros[registro_atual].tamNomeClube = i;
             registros[registro_atual].tamanhoRegistro+=i;
+            cabecalho_set_proxOffset(cabecalho , registros[registro_atual].tamanhoRegistro + cabecalho_get_proxOffset(cabecalho));
             break;
     }
 
+
 }
+
+void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
+    if (cabecalho != NULL) {
+        char status=cabecalho_get_status(cabecalho);
+        long long topo =  cabecalho_get_topo(cabecalho);
+        long long proxByteOffset = cabecalho_get_proxOffset(cabecalho);
+        int nroRegArq = cabecalho_get_nroRegArq(cabecalho);
+        int nroRegRem = cabecalho_get_nroRegRem(cabecalho);
+        fwrite(&status, sizeof(char),1,arquivo);
+        fwrite(&topo, sizeof(long long),1,arquivo);
+        fwrite(&proxByteOffset, sizeof(long long),1,arquivo);
+        fwrite(&nroRegArq, sizeof(int),1,arquivo);
+        fwrite(&nroRegRem, sizeof(int),1,arquivo);
+    
+    }
+}
+
 bool reader_create_table(char* csv,char* binario){
     FILE* arquivo=fopen(csv,"r");
     if(arquivo==NULL)return false;
     fseek(arquivo,46,SEEK_SET);
     int n=get_numero_registros(arquivo);
+    
 
+    CABECALHO *cabecalho = cabecalho_criar();
     REGISTRO* registros = (REGISTRO*)malloc(n*sizeof(REGISTRO));
+
+    cabecalho_set_nroRegArq(cabecalho,n);
+
     for(int registro_atual=0;registro_atual<n;registro_atual++){
         registros[registro_atual].removido = '0';
         registros[registro_atual].tamanhoRegistro = 33;
         registros[registro_atual].prox = -1;
+
         for(int i=1;i<=5;i++){
-            ler_campo(arquivo,i,registro_atual,registros);
+            ler_campo(arquivo,i,registro_atual,registros, cabecalho);
         }
     }
+    fclose(arquivo);
+
+    // Criando o binário
+    arquivo = fopen(binario, "wb"); 
+    if(arquivo == NULL) return false;
+
+    escreve_cabecalho(arquivo, cabecalho);
+    for(int i = 0; i < n; i++) {escreve_registro(arquivo, registros);}
 
     for(int i=0;i<n;i++){
         free(registros[i].nomeJogador);

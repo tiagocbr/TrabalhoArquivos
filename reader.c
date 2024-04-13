@@ -262,12 +262,18 @@ void imprime_registro(FILE *arquivo) {
     printf("Nome do clube do jogador: %s\n\n", r.nomeClube);
 
     // Desalocando as strings
-    free(r.nomeJogador);
-    r.nomeJogador = NULL;
-    free(r.nacionalidade);
-    r.nacionalidade = NULL;
-    free(r.nomeClube);
-    r.nomeClube = NULL;
+    if(r.nomeJogador != nulo) {
+        free(r.nomeJogador);
+        r.nomeJogador = NULL;
+    }
+    if(r.nacionalidade != nulo) {
+        free(r.nacionalidade);
+        r.nacionalidade = NULL;
+    }
+    if(r.nomeClube != nulo) {
+        free(r.nomeClube);
+        r.nomeClube = NULL;
+    }
 }
 
 int reader_select_from(char *binario) {

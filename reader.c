@@ -111,24 +111,28 @@ void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
     }
 }
 
-bool reader_create_table(char* csv,char* binario){
+bool reader_create_table(char* csv,char* binario) {
+    // Abrindo o arquivo csv para ler os dados
+    // arquivo é o ponteiro usado para ler ambos arquivos
     FILE* arquivo=fopen(csv,"r");
     if(arquivo==NULL)return false;
+
     fseek(arquivo,46,SEEK_SET);
     int n=get_numero_registros(arquivo);
     
-
+    // Instanciando as structs do vetor registro de dados e do cabeçalho
     CABECALHO *cabecalho = cabecalho_criar();
     REGISTRO* registros = (REGISTRO*)malloc(n*sizeof(REGISTRO));
 
     cabecalho_set_nroRegArq(cabecalho,n);
 
+    // Lendo no csv cada registro e armazenando-o no vetor
     for(int registro_atual=0;registro_atual<n;registro_atual++){
         registros[registro_atual].removido = '0';
         registros[registro_atual].tamanhoRegistro = 33;
         registros[registro_atual].prox = -1;
 
-        for(int i=1;i<=5;i++){
+        for(int i=1;i<=5;i++) {
             ler_campo(arquivo,i,registro_atual,registros, cabecalho);
         }
     }
@@ -138,6 +142,7 @@ bool reader_create_table(char* csv,char* binario){
     arquivo = fopen(binario, "wb"); 
     if(arquivo == NULL) return false;
 
+    // Escrevendo o registro de cabeçalho no binário
     escreve_cabecalho(arquivo, cabecalho);
     for(int i = 0; i < n; i++) {escreve_registro(arquivo, registros);}
 

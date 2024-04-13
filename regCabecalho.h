@@ -15,7 +15,7 @@
     int cabecalho_get_nroRegRem(CABECALHO *c);
 
     bool cabecalho_set_status(CABECALHO *c);
-    //bool cabecalho_set_topo(CABECALHO *c);
+    bool cabecalho_set_topo(CABECALHO *c, int novoTopo);
     bool cabecalho_set_proxOffset(CABECALHO *c, int novoOffset);
     bool cabecalho_set_nroRegArq(CABECALHO *c, int novoNumero);
     bool cabecalho_set_nroRegRem(CABECALHO *c, int novoNumero);

@@ -56,6 +56,14 @@ bool cabecalho_set_status(CABECALHO *c) {
     return false;
 }
 
+bool cabecalho_set_topo(CABECALHO *c, int novoTopo) {
+    if(c != NULL) {
+        c->topo = novoTopo;
+        return true;
+    }
+    return false;
+}
+
 bool cabecalho_set_proxOffset(CABECALHO *c, int novoOffset) {
     if(c != NULL) {
         c->proxByteOffset = novoOffset;

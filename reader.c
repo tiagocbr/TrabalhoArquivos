@@ -15,6 +15,7 @@ struct registro{
     char *nomeClube; //campo 5
 };
 
+// Função auxiliar que percorre o csv para descobrir o seu número total de registros
 int get_numero_registros(FILE* arquivo){
     char aux;
     int n=0;
@@ -26,6 +27,8 @@ int get_numero_registros(FILE* arquivo){
     return n;
 }
 
+// Função auxiliar que pega uma string lida no csv e a converte em inteiro
+// (Usada para armazenar os campos id e idade)
 int strToInt(char *str, int tam) {
     if(tam == 0)
         return -1;
@@ -44,12 +47,17 @@ int strToInt(char *str, int tam) {
     return -1;
 }
 
+// Função auxiliar que lê um determinado valor dos registros do csv e armazena
+// Seu valor no respectivo campo do registro atual do vetor de registros.
 void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, CABECALHO *cabecalho){
-    char* valor=(char*)malloc(sizeof(char)*20);
-    int i=0;
-    int t=20;
-    char aux;
+    char* valor;  // String dinâmica que armazena o campo lido
+    int i=0;      // Index da string (usado para armazenar os caracteres do registro)
+    int t=20;     // Tamanho da string (iniciada com 20)
+    char aux;     // variável auxiliar que recebe um char do campo no csv para armazena-lo na string valor
 
+    valor=(char*)malloc(sizeof(char)*20);
+
+    // Loop que lê o campo char a char para armazená-lo em valor.
     while(fscanf(arquivo,"%c",&aux) != EOF) {
         if(aux==',' || aux=='\n'){
             break;
@@ -62,6 +70,7 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, C
         }
     }
 
+    // Escolhendo o campo correto da struct para o valor lido
     switch(campo){
         case 1: 
             registros[registro_atual].id = strToInt(valor, i);
@@ -91,10 +100,9 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, C
             cabecalho_set_proxOffset(cabecalho , registros[registro_atual].tamanhoRegistro + cabecalho_get_proxOffset(cabecalho));
             break;
     }
-
-
 }
 
+// Função auxiliar que escreve no arquivo binário o registro de cabeçalho
 void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
     if (cabecalho != NULL) {
         char status=cabecalho_get_status(cabecalho);

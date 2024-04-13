@@ -4,6 +4,8 @@
     #include <stdlib.h>
     #include <stdbool.h>
 
+    // Implementa um tipo para o registro de dados, sendo usada tanto na
+    // Manipulação do csv quanto do binário
     typedef struct registro REGISTRO;
 
     // Cria o aqruivo com os registros do csv. recebe os nomes do arquivo de

@@ -36,7 +36,7 @@ long long cabecalho_get_topo(CABECALHO *c) {
 long long cabecalho_get_proxOffset(CABECALHO *c) {
     return ((c != NULL) ? c->proxByteOffset : ERRO);
 }
-int abecalho_get_nroRegArq(CABECALHO *c) {
+int cabecalho_get_nroRegArq(CABECALHO *c) {
     return ((c != NULL) ? c->nroRegArq : ERRO);
 }
 

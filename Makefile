@@ -15,4 +15,4 @@ regCabecalho.o: regCabecalho.c regCabecalho.h
 
 
 clean:
-	rm *.o programaTrab
+	rm *.o programaTrab binario.bin

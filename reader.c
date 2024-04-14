@@ -20,13 +20,13 @@ int get_numero_registros(FILE* arquivo){
     char aux;
     int n=0;
 
-    fseek(arquivo,45,SEEK_SET);
+    fseek(arquivo,46,SEEK_SET);
 
     while(fscanf(arquivo,"%c",&aux)!=EOF){
         if(aux==',')n++;
     }
     n=n/4;
-    fseek(arquivo,45,SEEK_SET);
+    fseek(arquivo,46,SEEK_SET);
     return n;
 }
 
@@ -155,7 +155,7 @@ bool reader_create_table(char* csv,char* binario) {
     // Abrindo o arquivo csv para ler os dados
     // arquivo é o ponteiro usado para ler ambos arquivos
     FILE* arquivo=fopen(csv,"r");
-    if(arquivo==NULL){printf("Teste1\n"); return false;}
+    if(arquivo==NULL){return false;}
 
     int n=get_numero_registros(arquivo);
     
@@ -174,13 +174,12 @@ bool reader_create_table(char* csv,char* binario) {
         for(int i=1;i<=5;i++) {
             ler_campo(arquivo,i,registro_atual,registros, cabecalho);
         }
-        printf("%d\n",registros[registro_atual].id);
     }
     fclose(arquivo);
 
     // Criando o binário
     arquivo = fopen(binario, "wb"); 
-    if(arquivo == NULL) {printf("Teste1\n"); return false;}
+    if(arquivo == NULL) {return false;}
 
     // Escrevendo o registro de cabeçalho no binário
     escreve_cabecalho(arquivo, cabecalho);
@@ -217,7 +216,7 @@ void imprime_registro(FILE *arquivo) {
     if(r.tamNomeJog == 0)
         r.nomeJogador = nulo;
     else {
-        r.nomeJogador = (char *) malloc(r.tamNomeJog * sizeof(char));
+        r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
 
         if(r.nomeJogador != NULL) {
             fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
@@ -229,7 +228,7 @@ void imprime_registro(FILE *arquivo) {
     if(r.tamNacionalidade == 0)
         r.nacionalidade = nulo;
     else {
-        r.nacionalidade = (char *) malloc(r.tamNacionalidade * sizeof(char));
+        r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
 
         if(r.nacionalidade != NULL) {
             fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
@@ -241,7 +240,7 @@ void imprime_registro(FILE *arquivo) {
     if(r.tamNomeClube == 0)
         r.nomeClube = nulo;
     else {
-        r.nomeClube = (char *) malloc(r.tamNomeClube * sizeof(char));
+        r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
 
         if(r.nomeClube != NULL) {
             fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
@@ -263,15 +262,15 @@ void imprime_registro(FILE *arquivo) {
     printf("Nome do clube do jogador: %s\n\n", r.nomeClube);
 
     // Desalocando as strings
-    if(r.nomeJogador != nulo) {
+    if(r.tamNomeJog!=0) {
         free(r.nomeJogador);
         r.nomeJogador = NULL;
     }
-    if(r.nacionalidade != nulo) {
+    if(r.tamNacionalidade != 0) {
         free(r.nacionalidade);
         r.nacionalidade = NULL;
     }
-    if(r.nomeClube != nulo) {
+    if(r.tamNomeClube != 0) {
         free(r.nomeClube);
         r.nomeClube = NULL;
     }

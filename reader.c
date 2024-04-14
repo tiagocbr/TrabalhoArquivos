@@ -5,25 +5,28 @@ struct registro{
     char removido;
     int tamanhoRegistro;
     long long prox;
-    int id; //campo 1
-    int idade; //campo 2
+    int id;              //campo 1
+    int idade;           //campo 2
     int tamNomeJog;
-    char *nomeJogador; //campo 3
+    char *nomeJogador;   //campo 3
     int tamNacionalidade;
     char *nacionalidade; //campo 4
     int tamNomeClube;
-    char *nomeClube; //campo 5
+    char *nomeClube;     //campo 5
 };
 
 // Função auxiliar que percorre o csv para descobrir o seu número total de registros
 int get_numero_registros(FILE* arquivo){
     char aux;
     int n=0;
+
+    fseek(arquivo,45,SEEK_SET);
+
     while(fscanf(arquivo,"%c",&aux)!=EOF){
         if(aux==',')n++;
     }
     n=n/4;
-    fseek(arquivo,46,SEEK_SET);
+    fseek(arquivo,45,SEEK_SET);
     return n;
 }
 
@@ -105,11 +108,14 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, C
 // Função auxiliar que escreve no arquivo binário o registro de cabeçalho
 void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
     if (cabecalho != NULL) {
+        // Passando os dados do TAD para variáveis locais
         char status=cabecalho_get_status(cabecalho);
         long long topo =  cabecalho_get_topo(cabecalho);
         long long proxByteOffset = cabecalho_get_proxOffset(cabecalho);
         int nroRegArq = cabecalho_get_nroRegArq(cabecalho);
         int nroRegRem = cabecalho_get_nroRegRem(cabecalho);
+
+        // Escrevendo o cabeçalho no arquivo
         fwrite(&status, sizeof(char),1,arquivo);
         fwrite(&topo, sizeof(long long),1,arquivo);
         fwrite(&proxByteOffset, sizeof(long long),1,arquivo);
@@ -119,13 +125,38 @@ void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
     }
 }
 
+void escreve_registro(FILE *arquivo, REGISTRO *registros, int qntd) {
+    if (registros != NULL) {
+        for(int i = 0; i < qntd; i++) {
+            // Escrevendo campos fixos
+            fwrite(&registros[i].removido, sizeof(char), 1, arquivo);
+            fwrite(&registros[i].tamanhoRegistro, sizeof(int), 1, arquivo);
+            fwrite(&registros[i].prox, sizeof(long long), 1, arquivo);
+            fwrite(&registros[i].id, sizeof(int), 1, arquivo);
+            fwrite(&registros[i].idade, sizeof(int), 1, arquivo);
+
+            // Escrevendo campos variáveis(se forem informados)
+            fwrite(&registros[i].tamNomeJog, sizeof(int), 1, arquivo);
+            if(registros[i].tamNomeJog != 0)
+                fwrite(registros[i].nomeJogador, sizeof(char), registros[i].tamNomeJog, arquivo);
+
+            fwrite(&registros[i].tamNacionalidade, sizeof(int), 1, arquivo);
+            if(registros[i].tamNacionalidade != 0)
+                fwrite(registros[i].nacionalidade, sizeof(char), registros[i].tamNacionalidade, arquivo);
+
+            fwrite(&registros[i].tamNomeClube, sizeof(int), 1, arquivo);
+            if(registros[i].tamNomeClube != 0)
+                fwrite(registros[i].nomeClube, sizeof(char), registros[i].tamNomeClube, arquivo);
+        }
+    }
+}
+
 bool reader_create_table(char* csv,char* binario) {
     // Abrindo o arquivo csv para ler os dados
     // arquivo é o ponteiro usado para ler ambos arquivos
     FILE* arquivo=fopen(csv,"r");
-    if(arquivo==NULL)return false;
+    if(arquivo==NULL){printf("Teste1\n"); return false;}
 
-    fseek(arquivo,46,SEEK_SET);
     int n=get_numero_registros(arquivo);
     
     // Instanciando as structs do vetor registro de dados e do cabeçalho
@@ -147,9 +178,18 @@ bool reader_create_table(char* csv,char* binario) {
     }
     fclose(arquivo);
 
-    
+    // Criando o binário
+    arquivo = fopen(binario, "wb"); 
+    if(arquivo == NULL) {printf("Teste1\n"); return false;}
 
-    
+    // Escrevendo o registro de cabeçalho no binário
+    escreve_cabecalho(arquivo, cabecalho);
+    escreve_registro(arquivo, registros, n);
+
+    fseek(arquivo, 0, SEEK_SET);
+    cabecalho_set_status(cabecalho);
+    escreve_cabecalho(arquivo,cabecalho);
+    fclose(arquivo);
 
     for(int i=0;i<n;i++){
         free(registros[i].nomeJogador);
@@ -160,4 +200,98 @@ bool reader_create_table(char* csv,char* binario) {
     return true;
 }
 
+// Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
+// registro, lê e imprime seus valores
+void imprime_registro(FILE *arquivo) {
+    REGISTRO r;              // Recebe o registro da posição atual do arquivo para imprimí-lo
+    char *nulo = "Sem dado"; // Constante char para caso um campo variável não tenha sido informado
 
+    // Lendo do arquivo
+    fread(&r.removido, sizeof(char), 1, arquivo);
+    fread(&r.tamanhoRegistro, sizeof(int), 1, arquivo);
+    fread(&r.prox, sizeof(long long), 1, arquivo);
+    fread(&r.id, sizeof(int), 1, arquivo);
+    fread(&r.idade, sizeof(int), 1, arquivo);
+
+    fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+    if(r.tamNomeJog == 0)
+        r.nomeJogador = nulo;
+    else {
+        r.nomeJogador = (char *) malloc(r.tamNomeJog * sizeof(char));
+
+        if(r.nomeJogador != NULL) {
+            fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
+            r.nomeJogador[r.tamNomeJog] = '\0';
+        }
+    }
+
+    fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
+    if(r.tamNacionalidade == 0)
+        r.nacionalidade = nulo;
+    else {
+        r.nacionalidade = (char *) malloc(r.tamNacionalidade * sizeof(char));
+
+        if(r.nacionalidade != NULL) {
+            fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
+            r.nacionalidade[r.tamNacionalidade] = '\0';
+        }
+    }
+
+    fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
+    if(r.tamNomeClube == 0)
+        r.nomeClube = nulo;
+    else {
+        r.nomeClube = (char *) malloc(r.tamNomeClube * sizeof(char));
+
+        if(r.nomeClube != NULL) {
+            fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
+            r.nomeClube[r.tamNomeClube] = '\0';
+        }
+    }
+
+    // Imprimindo
+    printf("Removido: %c\n", r.removido);
+    printf("Tamanho do registro: %d\n", r.tamanhoRegistro);
+    printf("Próximo byte offset removido: %lld\n", r.prox);
+    printf("Id: %d\n", r.id);
+    printf("Idade: %d\n", r.idade);
+    printf("Tamanho do nome do jogador: %d\n", r.tamNomeJog);
+    printf("Nome do jogador: %s\n", r.nomeJogador);
+    printf("Tamanho da nacionalidade do jogador: %d\n", r.tamNacionalidade);
+    printf("Nacionalidade do jogador: %s\n", r.nacionalidade);
+    printf("Tamanho do nome do clube do jogador: %d\n", r.tamNomeClube);
+    printf("Nome do clube do jogador: %s\n\n", r.nomeClube);
+
+    // Desalocando as strings
+    if(r.nomeJogador != nulo) {
+        free(r.nomeJogador);
+        r.nomeJogador = NULL;
+    }
+    if(r.nacionalidade != nulo) {
+        free(r.nacionalidade);
+        r.nacionalidade = NULL;
+    }
+    if(r.nomeClube != nulo) {
+        free(r.nomeClube);
+        r.nomeClube = NULL;
+    }
+}
+
+int reader_select_from(char *binario) {
+    FILE *arquivo;
+    int tamanho;
+
+    arquivo = fopen(binario, "rb");
+    if(arquivo == NULL) {return -1;}
+
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&tamanho, sizeof(int), 1, arquivo);
+
+    fseek(arquivo, 4, SEEK_CUR);
+    for(int i = 0; i < tamanho; i++) {
+        imprime_registro(arquivo);
+    }
+
+    fclose(arquivo);
+    return 1;
+}

@@ -143,16 +143,13 @@ bool reader_create_table(char* csv,char* binario) {
         for(int i=1;i<=5;i++) {
             ler_campo(arquivo,i,registro_atual,registros, cabecalho);
         }
+        printf("%d\n",registros[registro_atual].id);
     }
     fclose(arquivo);
 
-    // Criando o binário
-    arquivo = fopen(binario, "wb"); 
-    if(arquivo == NULL) return false;
+    
 
-    // Escrevendo o registro de cabeçalho no binário
-    escreve_cabecalho(arquivo, cabecalho);
-    for(int i = 0; i < n; i++) {escreve_registro(arquivo, registros);}
+    
 
     for(int i=0;i<n;i++){
         free(registros[i].nomeJogador);

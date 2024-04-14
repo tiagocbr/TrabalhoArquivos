@@ -11,7 +11,7 @@
     char cabecalho_get_status(CABECALHO *c);
     long long cabecalho_get_topo(CABECALHO *c);
     long long cabecalho_get_proxOffset(CABECALHO *c);
-    int abecalho_get_nroRegArq(CABECALHO *c);
+    int cabecalho_get_nroRegArq(CABECALHO *c);
     int cabecalho_get_nroRegRem(CABECALHO *c);
 
     bool cabecalho_set_status(CABECALHO *c);

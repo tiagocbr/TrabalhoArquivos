@@ -62,7 +62,7 @@ void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, C
 
     // Loop que lê o campo char a char para armazená-lo em valor.
     while(fscanf(arquivo,"%c",&aux) != EOF) {
-        if(aux==',' || aux=='\n'){
+        if(aux==',' || aux=='\n' || aux == '\r'){
             break;
         }
         valor[i]=aux;
@@ -202,6 +202,16 @@ bool reader_create_table(char* csv,char* binario) {
 // Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
 // registro, lê e imprime seus valores
 void imprime_registro(REGISTRO r) {
+    char* nulo =  "Sem dado";
+    if(r.tamNomeJog == 0){
+        r.nomeJogador = nulo;
+    }
+    if(r.tamNacionalidade == 0){
+        r.nacionalidade = nulo;
+    }
+    if(r.tamNomeClube == 0){
+        r.nomeClube = nulo;
+    }
 
     // Imprimindo
     printf("Removido: %c\n", r.removido);
@@ -232,20 +242,20 @@ void libera_registro(REGISTRO r){
         free(r.nomeClube);
         r.nomeClube = NULL;
     }
+
 }
 
 REGISTRO ler_registro_binario(FILE *arquivo){
     REGISTRO r;
-    char *nulo = "Sem dado"; // Constante char para caso um campo variável não tenha sido informado
     fread(&r.removido, sizeof(char), 1, arquivo);
     fread(&r.tamanhoRegistro, sizeof(int), 1, arquivo);
     fread(&r.prox, sizeof(long long), 1, arquivo);
     fread(&r.id, sizeof(int), 1, arquivo);
     fread(&r.idade, sizeof(int), 1, arquivo);
 
-     fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+    fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
     if(r.tamNomeJog == 0)
-        r.nomeJogador = nulo;
+        r.nomeJogador = NULL;
     else {
         r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
 
@@ -257,7 +267,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
 
     fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
     if(r.tamNacionalidade == 0)
-        r.nacionalidade = nulo;
+        r.nacionalidade = NULL;
     else {
         r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
 
@@ -269,7 +279,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
 
     fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
     if(r.tamNomeClube == 0)
-        r.nomeClube = nulo;
+        r.nomeClube = NULL;
     else {
         r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
 
@@ -294,7 +304,7 @@ int reader_select_from(char *binario) {
     fread(&tamanho, sizeof(int), 1, arquivo);
 
     fseek(arquivo, 4, SEEK_CUR);
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < tamanho; i++) {
         REGISTRO r = ler_registro_binario(arquivo);
         imprime_registro(r);
         libera_registro(r);
@@ -307,42 +317,42 @@ int reader_select_from(char *binario) {
 
 int reader_select_where(char * binario, int qntd){
     FILE *arquivo = fopen(binario,"rb");
-    REGISTRO lista[1000];
-    int n=0;
+    char campo[30];
+    int id;
+    int idade;
+    char nomeClube[100];
+    char nacionalidade[100];
+    char nomeJogador[100];
+    int procurado[6]; //vetor para controle de quais campos estou procurando
     for(int i=0;i<qntd;i++){
         int params;scanf("%d",&params);
-        int procurado[6]; //vetor para controle de quais campos estou procurando
-        for(int j=0;j<6;j++)procurado[j]=0;
-        char campo[30];
-        int id;
-        int idade;
-        char nomeClube[100];
-        char nacionalidade[100];
-        char nomeJogador[100];
+        for(int j=1;j<6;j++)procurado[j]=0;
         for(int j=0;j<params;j++){
-            scanf("%s",campo);
-            if(strcmp(campo,"id")==1){procurado[1]=1;scanf("%d",&id);}
-            if(strcmp(campo,"idade")==2){procurado[2]=1;scanf("%d",&idade);}
-            if(strcmp(campo,"nomeJogador")==3){procurado[3]=1;scanf("%s",nomeJogador);}
-            if(strcmp(campo,"nacionalidade")==4){procurado[4]=1;scanf("%s",nacionalidade);}
-            if(strcmp(campo,"nomeClube")==5){procurado[5]=1;scanf("%s",nomeClube);}
+            scanf(" %s",campo);
+            if(strcmp(campo,"id")==0){procurado[1]=1;scanf("%d",&id);}
+            if(strcmp(campo,"idade")==0){procurado[2]=1;scanf("%d",&idade);}
+            if(strcmp(campo,"nomeJogador")==0){procurado[3]=1;scanf(" %s",nomeJogador);}
+            if(strcmp(campo,"nacionalidade")==0){procurado[4]=1;scanf(" %s",nacionalidade);}
+            if(strcmp(campo,"nomeClube")==0){procurado[5]=1;scanf(" %s",nomeClube);}
         }
         fseek(arquivo,25,SEEK_SET);
         for(int j=0;j<1000;j++){
             REGISTRO r=ler_registro_binario(arquivo);
             bool ok=true;
-            for(int k=1;j<=5;j++){
+            for(int k=1;k<=5;k++){
                 if(procurado[k]==0)continue;
                 switch(k){
-                    case 1: if(id!=r.id) ok=false;break;
+                    case 1: if(id!=r.id)ok=false;break;
                     case 2: if(idade!=r.idade) ok=false;break;
-                    case 3: if(strcmp(nomeJogador,r.nomeJogador)!=1)ok=false;break;
-                    case 4: if(strcmp(nacionalidade,r.nacionalidade)!=1)ok=false;break;
-                    case 5: if(strcmp(nomeClube,r.nomeClube)!=1)ok=false;break;
+                    case 3: if(strcmp(nomeJogador,r.nomeJogador)!=0)ok=false;break;
+                    case 4: if(strcmp(nacionalidade,r.nacionalidade)!=0)ok=false;break;
+                    case 5: if(strcmp(nomeClube,r.nomeClube)!=0)ok=false;break;
                 }
             }
             if(ok)imprime_registro(r);
             libera_registro(r);
         }
     }
+    fclose(arquivo);
+    return 1;
 }

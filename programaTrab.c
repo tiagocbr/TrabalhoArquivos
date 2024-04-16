@@ -30,7 +30,7 @@ int main() {
                 printf("Falha no processamento do arquivo\n");
             break;
 
-        /*case 3:
+        case 3:
             scanf(" %s", arqEntrada);
             scanf("%d", &n);
             res2 = reader_select_where(arqEntrada, n);
@@ -38,7 +38,7 @@ int main() {
                 printf("Registro inexistente.\n");
             else if(res2 == -1)
                 printf("Falha no processamento do arquivo\n");
-            break;*/
+            break;
     }
 
     return 0;

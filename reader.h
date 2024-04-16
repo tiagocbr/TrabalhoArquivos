@@ -3,6 +3,7 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include <stdbool.h>
+    #include <string.h>
 
     // Implementa um tipo para o registro de dados, sendo usada tanto na
     // Manipulação do csv quanto do binário

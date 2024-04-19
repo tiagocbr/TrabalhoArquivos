@@ -6,38 +6,34 @@ int main() {
     char arqEntrada[30];  // Armazena o nome do arquivo de entrada
     char arqSaida[30];    // Armazena o nome do arquivo de saída
     int n = 0;            // Usada para informar a qntd de buscas de algumas funcionalidades
-    bool res1;            // Armzaena os resultados das funcionalidades booleanas
-    int res2;             // Armazena os resultados das funcionalidades inteiras
+    bool res;            // Armzaena os resultados das funcionalidades booleanas
     
     scanf("%d", &opCode);
     switch(opCode) {
         case 1:
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
-            res1 = reader_create_table(arqEntrada, arqSaida);
+            res = reader_create_table(arqEntrada, arqSaida);
 
-            if(!res1)
-                printf("Falha no processamento do arquivo\n");
+            if(!res)
+                printf("Falha no processamento do arquivo.\n");
             break;
         
         case 2:
             scanf(" %s", arqEntrada);
-            res2 = reader_select_from(arqEntrada);
+            res = reader_select_from(arqEntrada);
 
-            if(res2 == 0)
-                printf("Registro inexistente.\n");
-            else if(res2 == -1)
-                printf("Falha no processamento do arquivo\n");
+            if(!res)
+                printf("Falha no processamento do arquivo.\n");
             break;
 
         case 3:
             scanf(" %s", arqEntrada);
             scanf("%d", &n);
-            res2 = reader_select_where(arqEntrada, n);
-            if(res2 == 0)
-                printf("Registro inexistente.\n");
-            else if(res2 == -1)
-                printf("Falha no processamento do arquivo\n");
+            res = reader_select_where(arqEntrada, n);
+
+            if(!res)
+                printf("Falha no processamento do arquivo.\n");
             break;
     }
 

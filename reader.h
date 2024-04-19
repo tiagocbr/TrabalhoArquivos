@@ -14,11 +14,11 @@
     bool reader_create_table(char *csv, char *binario);
 
     // Imprime todos o registros do arquivo binário.
-    int reader_select_from(char *binario);
+    bool reader_select_from(char *binario);
 
     // Imprime todos os registros do arquivo segundo uma quantidade qntd
     // de buscas com condições próprias
-    int reader_select_where(char * binario, int qntd);
+    bool reader_select_where(char * binario, int qntd);
 
 
 #endif

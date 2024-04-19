@@ -1,5 +1,6 @@
 #include "reader.h"
 #include "regCabecalho.h"
+#include "funcoes_fornecidas.h"
 
 struct registro{
     char removido;
@@ -20,13 +21,13 @@ int get_numero_registros(FILE* arquivo){
     char aux;
     int n=0;
 
-    fseek(arquivo,46,SEEK_SET);
+    fseek(arquivo,45,SEEK_SET);
 
     while(fscanf(arquivo,"%c",&aux)!=EOF){
         if(aux==',')n++;
     }
     n=n/4;
-    fseek(arquivo,46,SEEK_SET);
+    fseek(arquivo,45,SEEK_SET);
     return n;
 }
 
@@ -196,13 +197,17 @@ bool reader_create_table(char* csv,char* binario) {
         free(registros[i].nacionalidade);
     }
     free(registros);
+
+    binarioNaTela(binario);
+
     return true;
 }
 
 // Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
 // registro, lê e imprime seus valores
 void imprime_registro(REGISTRO r) {
-    char* nulo =  "Sem dado";
+    char* nulo =  "Sem dado";   // Valor a ser impresso para registros com campos variáveis
+                                // do tipo string nulos.
     if(r.tamNomeJog == 0){
         r.nomeJogador = nulo;
     }
@@ -213,22 +218,16 @@ void imprime_registro(REGISTRO r) {
         r.nomeClube = nulo;
     }
 
-    // Imprimindo
-    printf("Removido: %c\n", r.removido);
-    printf("Tamanho do registro: %d\n", r.tamanhoRegistro);
-    printf("Próximo byte offset removido: %lld\n", r.prox);
-    printf("Id: %d\n", r.id);
-    printf("Idade: %d\n", r.idade);
-    printf("Tamanho do nome do jogador: %d\n", r.tamNomeJog);
-    printf("Nome do jogador: %s\n", r.nomeJogador);
-    printf("Tamanho da nacionalidade do jogador: %d\n", r.tamNacionalidade);
-    printf("Nacionalidade do jogador: %s\n", r.nacionalidade);
-    printf("Tamanho do nome do clube do jogador: %d\n", r.tamNomeClube);
-    printf("Nome do clube do jogador: %s\n\n", r.nomeClube);
-
+    // Imprimindo todos os registros não logicamente removidos
+    if(r.removido == '0') {
+        printf("Nome do jogador: %s\n", r.nomeJogador);
+        printf("Nacionalidade do jogador: %s\n", r.nacionalidade);
+        printf("Clube do jogador: %s\n\n", r.nomeClube);
+    }
 }
 
-//libera as regioes de memoria para onde esse registro aponta em nomejogador,nacionalidade e nome clube
+//libera as regiões de memória para onde esse registro aponta em nomejogador,nacionalidade e nome
+// clube
 void libera_registro(REGISTRO r){ 
     if(r.tamNomeJog!=0) {
         free(r.nomeJogador);
@@ -245,14 +244,19 @@ void libera_registro(REGISTRO r){
 
 }
 
+// Função auxiliar que le um registro do arquivo binário e o salva em uma variável da struct
+// registro
 REGISTRO ler_registro_binario(FILE *arquivo){
-    REGISTRO r;
+    REGISTRO r;     // Variável que armazena e retorna o registro lido
+
+    // Lendo os campos fixos do registro
     fread(&r.removido, sizeof(char), 1, arquivo);
     fread(&r.tamanhoRegistro, sizeof(int), 1, arquivo);
     fread(&r.prox, sizeof(long long), 1, arquivo);
     fread(&r.id, sizeof(int), 1, arquivo);
     fread(&r.idade, sizeof(int), 1, arquivo);
 
+    // Lendo e alocando os campos variávies, quando necessário
     fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
     if(r.tamNomeJog == 0)
         r.nomeJogador = NULL;
@@ -291,18 +295,18 @@ REGISTRO ler_registro_binario(FILE *arquivo){
     return r;
 }
 
-
-
-int reader_select_from(char *binario) {
-    FILE *arquivo;
-    int tamanho;
+bool reader_select_from(char *binario) {
+    FILE *arquivo;      // Ponteiro para o arquivo informado
+    int tamanho;        // Armazena a quantidade de registros no arquivo binário
 
     arquivo = fopen(binario, "rb");
-    if(arquivo == NULL) {return -1;}
+    if(arquivo == NULL) {return false;}
 
+    // Salvando o nroRegArq do cabeçalho em tamanho
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
 
+    // Lendo e imprimindo todos os registros do arquivo
     fseek(arquivo, 4, SEEK_CUR);
     for(int i = 0; i < tamanho; i++) {
         REGISTRO r = ler_registro_binario(arquivo);
@@ -311,48 +315,126 @@ int reader_select_from(char *binario) {
     }
 
     fclose(arquivo);
-    return 1;
+    return true;
 }
 
 
-int reader_select_where(char * binario, int qntd){
-    FILE *arquivo = fopen(binario,"rb");
-    char campo[30];
+bool reader_select_where(char * binario, int qntd){
+    FILE *arquivo;          // Ponteiro para o arquivo binário
+    char campo[30];         // Campo que o usuário digitará para a busca
+    int procurado[6];       // vetor para controle dos campos o usuário está procurando
+    REGISTRO *regs;         // Vetor que armazena os registros encontrados na busca
+    int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas.
+    int *qntdBuscas;        // Vetor que armazena a quantidade de registros encontrados para cada busca
+
+    // Variáveis que guardam as condições da busca para cada campo informadas pelo usuário
     int id;
     int idade;
     char nomeClube[100];
     char nacionalidade[100];
     char nomeJogador[100];
-    int procurado[6]; //vetor para controle de quais campos estou procurando
-    for(int i=0;i<qntd;i++){
-        int params;scanf("%d",&params);
+
+    // Abrindo e verificando a própria abertura do arquivo
+    arquivo = fopen(binario, "rb");
+    if(arquivo == NULL)
+        return false;
+
+    // Alocando o vetor de registros
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&tamanho, sizeof(int), 1, arquivo);
+
+    // Alocando regs e qntdBuscas (e inicializando o último com 0)
+    regs = (REGISTRO *) malloc(tamanho * sizeof(REGISTRO));
+    qntdBuscas = (int *) malloc(qntd * sizeof(int));
+    for(int i = 0; i < qntd; i++) qntdBuscas[i]=0;
+    tamanho = 0;    // Vai ser reutilizado para acessar as posições corretas do vetor de registros
+
+    // Loop externo que executa a qntd de buscas informadas
+    for(int i = 0; i < qntd; i++){
+        int params;
+        scanf("%d",&params);
+
+        // Resetando todos os campos como não procurados pelo usuário na busca
         for(int j=1;j<6;j++)procurado[j]=0;
+
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
-            if(strcmp(campo,"id")==0){procurado[1]=1;scanf("%d",&id);}
-            if(strcmp(campo,"idade")==0){procurado[2]=1;scanf("%d",&idade);}
-            if(strcmp(campo,"nomeJogador")==0){procurado[3]=1;scanf(" %s",nomeJogador);}
-            if(strcmp(campo,"nacionalidade")==0){procurado[4]=1;scanf(" %s",nacionalidade);}
-            if(strcmp(campo,"nomeClube")==0){procurado[5]=1;scanf(" %s",nomeClube);}
+
+            if(strcmp(campo,"id")==0){
+                procurado[1]=1;
+                scanf("%d",&id);
+            }
+            if(strcmp(campo,"idade")==0){
+                procurado[2]=1;
+                scanf("%d",&idade);
+            }
+            if(strcmp(campo,"nomeJogador")==0){
+                procurado[3]=1;
+                scan_quote_string(nomeJogador);
+            }
+            if(strcmp(campo,"nacionalidade")==0){
+                procurado[4]=1;
+                scan_quote_string(nacionalidade);
+            }
+            if(strcmp(campo,"nomeClube")==0){
+                procurado[5]=1;
+                scan_quote_string(nomeClube);
+            }
         }
+
         fseek(arquivo,25,SEEK_SET);
         for(int j=0;j<1000;j++){
-            REGISTRO r=ler_registro_binario(arquivo);
-            bool ok=true;
-            for(int k=1;k<=5;k++){
+            REGISTRO r = ler_registro_binario(arquivo);
+            bool ok = true;
+
+            for(int k = 1; k <= 5; k++){
                 if(procurado[k]==0)continue;
                 switch(k){
-                    case 1: if(id!=r.id)ok=false;break;
-                    case 2: if(idade!=r.idade) ok=false;break;
-                    case 3: if(strcmp(nomeJogador,r.nomeJogador)!=0)ok=false;break;
-                    case 4: if(strcmp(nacionalidade,r.nacionalidade)!=0)ok=false;break;
-                    case 5: if(strcmp(nomeClube,r.nomeClube)!=0)ok=false;break;
+                    case 1: 
+                        if(id!=r.id) ok=false;
+                        break;
+                    case 2: 
+                        if(idade!=r.idade)
+                            ok=false;
+                        break;
+                    case 3: 
+                        if(r.nomeJogador == NULL || strcmp(nomeJogador,r.nomeJogador)!=0) ok=false;
+                        break;
+                    case 4: 
+                        if(r.nacionalidade == NULL || strcmp(nacionalidade,r.nacionalidade)!=0) ok=false;
+                        break;
+                    case 5: 
+                        if(r.nomeClube == NULL || strcmp(nomeClube,r.nomeClube)!=0) ok=false;
+                        break;
                 }
             }
-            if(ok)imprime_registro(r);
-            libera_registro(r);
+            if(ok) {
+                regs[tamanho + qntdBuscas[i]] = r;
+                qntdBuscas[i] += 1;
+            }
         }
+        tamanho += qntdBuscas[i];
     }
+
+    // Imprimindo os resultados das buscas armazenadas no vetor
+    tamanho = 0;
+    for(int i = 0; i < qntd; i++) {
+        printf("Busca %d\n\n", i + 1);
+
+        if(qntdBuscas[i] > 0) {
+            for(int j = 0; j < qntdBuscas[i]; j++) {
+                imprime_registro(regs[tamanho + j]);
+                libera_registro(regs[tamanho + j]);
+            }
+        }
+        else
+            printf("Registro inexistente.\n\n");
+        tamanho += qntdBuscas[i];
+    }
+
+    free(qntdBuscas);
+    free(regs);
+
     fclose(arquivo);
-    return 1;
+    return true;
 }

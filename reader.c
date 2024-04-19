@@ -319,13 +319,14 @@ bool reader_select_from(char *binario) {
 }
 
 
-bool reader_select_where(char * binario, int qntd){
+bool reader_select_where(char * binario, int qntd) {
     FILE *arquivo;          // Ponteiro para o arquivo binário
     char campo[30];         // Campo que o usuário digitará para a busca
     int procurado[6];       // vetor para controle dos campos o usuário está procurando
     REGISTRO *regs;         // Vetor que armazena os registros encontrados na busca
-    int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas.
+    int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas
     int *qntdBuscas;        // Vetor que armazena a quantidade de registros encontrados para cada busca
+    bool id_encontrado = 0;// Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
 
     // Variáveis que guardam as condições da busca para cada campo informadas pelo usuário
     int id;
@@ -346,7 +347,10 @@ bool reader_select_where(char * binario, int qntd){
     // Alocando regs e qntdBuscas (e inicializando o último com 0)
     regs = (REGISTRO *) malloc(tamanho * sizeof(REGISTRO));
     qntdBuscas = (int *) malloc(qntd * sizeof(int));
-    for(int i = 0; i < qntd; i++) qntdBuscas[i]=0;
+    if(regs == NULL || qntdBuscas == NULL)
+        return false;
+    
+    for(int i = 0; i < qntd; i++) qntdBuscas[i] = 0;
     tamanho = 0;    // Vai ser reutilizado para acessar as posições corretas do vetor de registros
 
     // Loop externo que executa a qntd de buscas informadas
@@ -355,43 +359,48 @@ bool reader_select_where(char * binario, int qntd){
         scanf("%d",&params);
 
         // Resetando todos os campos como não procurados pelo usuário na busca
-        for(int j=1;j<6;j++)procurado[j]=0;
+        for(int j=1;j<6;j++)procurado[j] = 0;
 
+        // Recebendo as condições do usuário para cada parametro ad busca atual
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
 
-            if(strcmp(campo,"id")==0){
+            if(strcmp(campo,"id") == 0) {
                 procurado[1]=1;
                 scanf("%d",&id);
             }
-            if(strcmp(campo,"idade")==0){
+            if(strcmp(campo,"idade") == 0) {
                 procurado[2]=1;
                 scanf("%d",&idade);
             }
-            if(strcmp(campo,"nomeJogador")==0){
+            if(strcmp(campo,"nomeJogador") == 0) {
                 procurado[3]=1;
                 scan_quote_string(nomeJogador);
             }
-            if(strcmp(campo,"nacionalidade")==0){
+            if(strcmp(campo,"nacionalidade") == 0) {
                 procurado[4]=1;
                 scan_quote_string(nacionalidade);
             }
-            if(strcmp(campo,"nomeClube")==0){
+            if(strcmp(campo,"nomeClube") == 0) {
                 procurado[5]=1;
                 scan_quote_string(nomeClube);
             }
         }
 
+        // Percorrendo o arquivo para a busca atual
         fseek(arquivo,25,SEEK_SET);
-        for(int j=0;j<1000;j++){
+        for(int j = 0; j < 1000; j++) {
             REGISTRO r = ler_registro_binario(arquivo);
             bool ok = true;
 
-            for(int k = 1; k <= 5; k++){
-                if(procurado[k]==0)continue;
-                switch(k){
+            for(int k = 1; k <= 5; k++) {
+                if(procurado[k] == 0) continue;
+                switch(k) {
                     case 1: 
-                        if(id!=r.id) ok=false;
+                        if(id!=r.id) 
+                            ok=false;
+                        else
+                            id_encontrado = true;
                         break;
                     case 2: 
                         if(idade!=r.idade)
@@ -411,6 +420,11 @@ bool reader_select_where(char * binario, int qntd){
             if(ok) {
                 regs[tamanho + qntdBuscas[i]] = r;
                 qntdBuscas[i] += 1;
+
+            }
+            if(id_encontrado) {
+                id_encontrado = 0;
+                break;      // Parando a busca caso o id tenha sido encontrado
             }
         }
         tamanho += qntdBuscas[i];

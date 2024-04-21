@@ -206,7 +206,7 @@ bool reader_create_table(char* csv,char* binario) {
 // Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
 // registro, lê e imprime seus valores
 void imprime_registro(REGISTRO r) {
-    char* nulo =  "Sem dado";   // Valor a ser impresso para registros com campos variáveis
+    char* nulo =  "SEM DADO";   // Valor a ser impresso para registros com campos variáveis
                                 // do tipo string nulos.
     if(r.tamNomeJog == 0){
         r.nomeJogador = nulo;
@@ -220,9 +220,9 @@ void imprime_registro(REGISTRO r) {
 
     // Imprimindo todos os registros não logicamente removidos
     if(r.removido == '0') {
-        printf("Nome do jogador: %s\n", r.nomeJogador);
-        printf("Nacionalidade do jogador: %s\n", r.nacionalidade);
-        printf("Clube do jogador: %s\n\n", r.nomeClube);
+        printf("Nome do Jogador: %s\n", r.nomeJogador);
+        printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
+        printf("Clube do Jogador: %s\n\n", r.nomeClube);
     }
 }
 
@@ -256,40 +256,55 @@ REGISTRO ler_registro_binario(FILE *arquivo){
     fread(&r.id, sizeof(int), 1, arquivo);
     fread(&r.idade, sizeof(int), 1, arquivo);
 
-    // Lendo e alocando os campos variávies, quando necessário
-    fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
-    if(r.tamNomeJog == 0)
-        r.nomeJogador = NULL;
-    else {
-        r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
+    // Pulando os campos variáveis caso o registro esteja lógicamente removido
+    if(r.removido == '1') {
+        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+        fseek(arquivo, r.tamNomeJog, SEEK_CUR);
+        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
+        fseek(arquivo, r.tamNacionalidade, SEEK_CUR);
+        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
+        fseek(arquivo, r.tamNomeClube, SEEK_CUR);
 
-        if(r.nomeJogador != NULL) {
-            fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
-            r.nomeJogador[r.tamNomeJog] = '\0';
-        }
-    }
-
-    fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
-    if(r.tamNacionalidade == 0)
         r.nacionalidade = NULL;
-    else {
-        r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
-
-        if(r.nacionalidade != NULL) {
-            fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
-            r.nacionalidade[r.tamNacionalidade] = '\0';
-        }
-    }
-
-    fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
-    if(r.tamNomeClube == 0)
+        r.nomeJogador = NULL;
         r.nomeClube = NULL;
+    }
     else {
-        r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
+        // Lendo e alocando os campos variávies, quando necessário
+        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+        if(r.tamNomeJog == 0)
+            r.nomeJogador = NULL;
+        else {
+            r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
 
-        if(r.nomeClube != NULL) {
-            fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
-            r.nomeClube[r.tamNomeClube] = '\0';
+            if(r.nomeJogador != NULL) {
+                fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
+                r.nomeJogador[r.tamNomeJog] = '\0';
+            }
+        }
+
+        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
+        if(r.tamNacionalidade == 0)
+            r.nacionalidade = NULL;
+        else {
+            r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
+
+            if(r.nacionalidade != NULL) {
+                fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
+                r.nacionalidade[r.tamNacionalidade] = '\0';
+            }
+        }
+
+        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
+        if(r.tamNomeClube == 0)
+            r.nomeClube = NULL;
+        else {
+            r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
+
+            if(r.nomeClube != NULL) {
+                fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
+                r.nomeClube[r.tamNomeClube] = '\0';
+            }
         }
     }
     return r;
@@ -298,6 +313,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
 bool reader_select_from(char *binario) {
     FILE *arquivo;      // Ponteiro para o arquivo informado
     int tamanho;        // Armazena a quantidade de registros no arquivo binário
+    REGISTRO r;
 
     arquivo = fopen(binario, "rb");
     if(arquivo == NULL) {return false;}
@@ -305,13 +321,23 @@ bool reader_select_from(char *binario) {
     // Salvando o nroRegArq do cabeçalho em tamanho
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
+    
+    // Lendo e imprimindo todos os registros do arquivo, se houver
+    if(tamanho == 0) {
+        printf("Registro inexistente.\n\n");
+    }
+    else {
+        fseek(arquivo, 4, SEEK_CUR);
 
-    // Lendo e imprimindo todos os registros do arquivo
-    fseek(arquivo, 4, SEEK_CUR);
-    for(int i = 0; i < tamanho; i++) {
-        REGISTRO r = ler_registro_binario(arquivo);
-        imprime_registro(r);
-        libera_registro(r);
+        while(1) {
+            r = ler_registro_binario(arquivo);
+            if(!feof(arquivo)) {
+                imprime_registro(r);
+                libera_registro(r);
+            }
+            else
+                break;
+        }
     }
 
     fclose(arquivo);
@@ -326,7 +352,7 @@ bool reader_select_where(char * binario, int qntd) {
     REGISTRO *regs;         // Vetor que armazena os registros encontrados na busca
     int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas
     int *qntdBuscas;        // Vetor que armazena a quantidade de registros encontrados para cada busca
-    bool id_encontrado = 0;// Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
+    bool id_encontrado = 0; // Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
 
     // Variáveis que guardam as condições da busca para cada campo informadas pelo usuário
     int id;
@@ -417,7 +443,7 @@ bool reader_select_where(char * binario, int qntd) {
                         break;
                 }
             }
-            if(ok) {
+            if(ok && r.removido == '0') {
                 regs[tamanho + qntdBuscas[i]] = r;
                 qntdBuscas[i] += 1;
 

@@ -29,6 +29,7 @@ CABECALHO *cabecalho_criar(void) {
 char cabecalho_get_status(CABECALHO *c) {
     return ((c != NULL) ? c->status : 'x');
 }
+
 long long cabecalho_get_topo(CABECALHO *c) {
     return ((c != NULL) ? c->topo : ERRO);
 }

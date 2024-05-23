@@ -191,12 +191,15 @@ bool reader_create_table(char* csv,char* binario) {
     escreve_cabecalho(arquivo,cabecalho);
     fclose(arquivo);
 
+
+    cabecalho_apagar(&cabecalho);
     for(int i=0;i<n;i++){
         free(registros[i].nomeJogador);
         free(registros[i].nomeClube);
         free(registros[i].nacionalidade);
     }
     free(registros);
+    registros = NULL;
 
     binarioNaTela(binario);
 
@@ -229,7 +232,7 @@ void imprime_registro(REGISTRO r) {
 //libera as regiões de memória para onde esse registro aponta em nomejogador,nacionalidade e nome
 // clube
 void libera_registro(REGISTRO r){ 
-    if(r.tamNomeJog!=0) {
+    if(r.tamNomeJog != 0) {
         free(r.nomeJogador);
         r.nomeJogador = NULL;
     }
@@ -335,9 +338,12 @@ bool reader_select_from(char *binario) {
                 imprime_registro(r);
                 libera_registro(r);
             }
-            else
+            else {
                 break;
+            }
         }
+
+        libera_registro(r);
     }
 
     fclose(arquivo);
@@ -448,6 +454,8 @@ bool reader_select_where(char * binario, int qntd) {
                 qntdBuscas[i] += 1;
 
             }
+            else 
+                libera_registro(r);
             if(id_encontrado) {
                 id_encontrado = 0;
                 break;      // Parando a busca caso o id tenha sido encontrado

@@ -25,6 +25,7 @@
     bool cabecalho_set_nroRegArq(CABECALHO *c, int novoNumero);
     bool cabecalho_set_nroRegRem(CABECALHO *c, int novoNumero);
 
+    // Apaga o cabeçalho, desalocando a memória usada.
     bool cabecalho_apagar(CABECALHO **c);
 
 #endif

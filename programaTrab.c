@@ -1,3 +1,9 @@
+/*
+INTEGRANTES DO GRUPO:
+Gabriel Antunes Afonso de Araujo - 14571077
+Tiago Chaves Bezerra Rocha       - 14609637
+*/
+
 #include <stdio.h>
 #include "reader.h"
 
@@ -6,7 +12,7 @@ int main() {
     char arqEntrada[30];  // Armazena o nome do arquivo de entrada
     char arqSaida[30];    // Armazena o nome do arquivo de saída
     int n = 0;            // Usada para informar a qntd de buscas de algumas funcionalidades
-    bool res;            // Armzaena os resultados das funcionalidades booleanas
+    bool res;             // Armzaena os resultados das funcionalidades booleanas
     
     scanf("%d", &opCode);
     switch(opCode) {

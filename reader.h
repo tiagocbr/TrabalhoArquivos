@@ -9,13 +9,16 @@
     // Manipulação do csv quanto do binário e suas funcionalidades.
     typedef struct registro REGISTRO;
 
+    // Funcionalidade 1
     // Cria o aqruivo com os registros do csv. recebe os nomes do arquivo de
     // leitura e do de sáida, e retorna um bool para o sucesso da operação
     bool reader_create_table(char *csv, char *binario);
 
+    // Funcionalidade 2
     // Imprime todos o registros do arquivo binário.
     bool reader_select_from(char *binario);
 
+    // Funcionalidade 3
     // Imprime todos os registros do arquivo segundo uma quantidade qntd
     // de buscas com condições próprias
     bool reader_select_where(char * binario, int qntd);

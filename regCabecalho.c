@@ -13,6 +13,7 @@ struct cabecalho{
 CABECALHO *cabecalho_criar(void) {
     CABECALHO *c;
 
+    // Criando e inicializando os valores do registro de cabeçalho na memória principal
     c = (CABECALHO *) malloc(sizeof(CABECALHO));
     if(c != NULL) {
         c->status = '0';
@@ -25,6 +26,7 @@ CABECALHO *cabecalho_criar(void) {
     return c;
 }
 
+// FUNÇÕES QUE RETORNAM O VALOR DE UM CAMPO DO REGISTRO ("GET")
 // Retorna x caso c == NULL;
 char cabecalho_get_status(CABECALHO *c) {
     return ((c != NULL) ? c->status : 'x');
@@ -45,6 +47,8 @@ int cabecalho_get_nroRegRem(CABECALHO *c) {
     return ((c != NULL) ? c->nroRegRem : ERRO);
 }
 
+// FUNÇÕES QUE ALTERAM O VALOR DE UM CAMPO DO REGISTRO ("SET")
+// set_status não precisa de outro argumento, pois o status é sempre 0 ou 1
 bool cabecalho_set_status(CABECALHO *c) {
     if(c != NULL) {
         if(c->status == '1')

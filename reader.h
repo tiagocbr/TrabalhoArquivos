@@ -23,5 +23,10 @@
     // de buscas com condições próprias
     bool reader_select_where(char * binario, int qntd);
 
+    // Funcionalidade 5
+    // Deleta um arquivo logicamente no arquivo principal e fisicamente no arquivo de índices
+    // Esta funcionalidade será repetida n vezes
+    bool reader_delete_where(char *binario ,char *indices,int n);
+
 
 #endif

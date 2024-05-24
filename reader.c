@@ -363,7 +363,12 @@ void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
     nRegArq-=qntd;
     fseek(arquivo,-4,SEEK_CUR);
     fwrite(&nRegArq,sizeof(int),1,arquivo);
-
+    //atualiza o numero de registros removidos no cabecalho
+    int nroRegRem=0;
+    fread(&nroRegRem,sizeof(int),1,arquivo);
+    nroRegRem+=qntd;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&nroRegRem,sizeof(int),1,arquivo);
     //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
     fseek(arquivo,offset_topo,SEEK_SET)
     long long prox;
@@ -787,4 +792,91 @@ bool reader_delete_where(char *binario,char *indices,int n){
     status='1';
     fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
+}
+
+void inserir_arquivo_principal(FILE* arquivo,REGISTRO* regs,int qntd){
+    int reaproveitados=0;//variavel para guardar quantos registros ocuparam lugar de registros logicamente removidos
+    int ponteiro_regs=0;
+    fseek(arquivo,1,SEEK_SET);
+    int prox;
+    fread(&prox,sizeof(int),1,arquivo);
+    int offset_anterior = 1;
+    while(ponteiro_regs<qntd){
+        if(prox==-1){//inserir o resto no final do arquivo;
+            fseek(arquivo,0,SEEK_END);
+            for(int i=ponteiro_regs;i<qntd;i++)escreve_registro(regs[i]);
+            break;
+        }
+        else{
+            fseek(arquivo,prox+1,SEEK_SET);
+            int tamanho;
+            fread(&tamanho,sizeof(int),1,arquivo);
+            fread(&prox,sizeof(int),1,arquivo);
+            if(tamanho>=regs[ponteiro_regs].tamanhoRegistro){
+                reaproveitados++;
+                fseek(arquivo,-12,SEEK_CUR);
+                regs[ponteiro_regs].tamanhoRegistro = tamanho;
+                escreve_registro(regs[ponteiro_regs]);
+                char lixo = '$';
+                fwrite(&lixo,sizeof(char),tamanho-regs[ponteiro_regs].tamanhoRegistro,arquivo);
+                ponteiro_regs++;
+                fseek(arquivo,offset_anterior,SEEK_SET);
+                fwrite(&prox,sizeof(int),1,arquivo);
+            }
+            else{
+                offset_anterior = ftell(arquivo) - 8;
+            }
+        }
+    }
+    //atualizando os valores de n_registros e n_registros removidos no cabecalho
+    fseek(arquivo,17,SEEK_SET);
+    int n_reg;
+    fread(&n_reg,sizeof(int),1,arquivo);
+    n_reg+=qntd;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_reg,sizeof(int),1,arquivo);
+    fread(&n_reg,sizeof(int),1,arquivo);
+    n_reg-=reaproveitados;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_reg,sizeof(int),1,arquivo);
+}
+
+int get_tamanho_string(char *string){
+    int ct=0;
+    while(string[ct]!='\0'){
+        ct++;
+    }
+    return ct;
+}
+void reader_insert_into(char *binario,char *indices,int n){
+    REGISTRO* regs=(REGISTRO*)malloc(sizeof(REGISTRO)*n);
+    for(int i=0;i<n;i++){
+        scanf("%d %d",&regs[i].id,&regs[i].idade);
+        regs[i].nomeJogador = (char*) malloc (sizeof(char)*100);
+        regs[i].nacionalidade = (char*) malloc(sizeof(char)*100);
+        regs[i].nomeClube = (char*) malloc(sizeof(char)*100);
+        regs[i].removido = '0';
+        regs[i].prox = '-1';
+        scan_quote_string(regs[i].nomeJogador);
+        scan_quote_string(regs[i].nacionalidade);
+        scan_quote_string(regis[i].nomeClube);
+        regs[i].tamNomeJog = get_tamanho_string(regs[i].nomeJogador);
+        regs[i].tamNacionalidade = get_tamanho_string(regs[i].nacionalidade);
+        regs[i].tamNomeClube = get_tamanho_string(regs[i].nomeClube);
+        regs[i].tamanhoRegistro = 33 + regs[i].tamNomeJog + regs[i].tamNacionalidade + regs[i].tamNomeClube;
+
+    }
+    FILE* arquivo = fopen(binario,"wb+");
+    char status;
+    fread(&status,sizeof(char),1,arquivo);
+    if(status=='0'){
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+    status='1';
+    fseek(arquivo,-1,SEEK_CUR);
+    fwrite(&status,sizeof(char),1,arquivo);
+    inserir_arquivo_principal(arquivo,regs,n);
+    //
+
 }

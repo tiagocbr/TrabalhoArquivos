@@ -1,6 +1,7 @@
 #include "reader.h"
 #include "regCabecalho.h"
 #include "funcoes_fornecidas.h"
+#include "indiceSimples.h"
 
 struct registro{
     char removido;
@@ -316,17 +317,23 @@ REGISTRO ler_registro_binario(FILE *arquivo){
 bool reader_select_from(char *binario) {
     FILE *arquivo;      // Ponteiro para o arquivo informado
     int tamanho;        // Armazena a quantidade de registros no arquivo binário
+    char status;        // Recebe o status do arquivo, para avaliar se este está concistente
     REGISTRO r;
 
     arquivo = fopen(binario, "rb");
     if(arquivo == NULL) {return false;}
 
-    // Salvando o nroRegArq do cabeçalho em tamanho
+    // Verificando se o arquivo está concistnte
+    fread(&status, sizeof(char), 1, arquivo);
+     if(status == '0')
+        return false;
+
+     // Salvando o nroRegArq do cabeçalho em tamanho
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
     
     // Lendo e imprimindo todos os registros do arquivo, se houver
-    if(tamanho == 0) {
+    if(tamanho == 0 || status == '0') {
         printf("Registro inexistente.\n\n");
     }
     else {
@@ -357,6 +364,7 @@ bool reader_select_where(char * binario, int qntd) {
     int procurado[6];       // vetor para controle dos campos o usuário está procurando
     REGISTRO *regs;         // Vetor que armazena os registros encontrados na busca
     int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas
+    char status;            // Variável usada para verificar se o arquivo buscado está concistente
     int *qntdBuscas;        // Vetor que armazena a quantidade de registros encontrados para cada busca
     bool id_encontrado = 0; // Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
 
@@ -370,6 +378,11 @@ bool reader_select_where(char * binario, int qntd) {
     // Abrindo e verificando a própria abertura do arquivo
     arquivo = fopen(binario, "rb");
     if(arquivo == NULL)
+        return false;
+
+    // Verificando se o arquivo está concistente
+    fread(&status, sizeof(char), 1, arquivo);
+     if(status == '0')
         return false;
 
     // Alocando o vetor de registros
@@ -485,4 +498,91 @@ bool reader_select_where(char * binario, int qntd) {
 
     fclose(arquivo);
     return true;
+}
+
+
+int quickSortParticao(REGISTROI *vet, int ini, int fim) {
+    int j = ini;    // Índice da próxima posição a ser trocada no quick sort
+    REGISTROI pivo = vet[fim];
+    REGISTROI aux;
+
+
+    for(int i = ini; i < fim; i++) {
+        if(vet[i].id < pivo.id) {
+            // Trocando o elemento de i com j
+            aux = vet[i];
+            vet[i] = vet[j];
+            vet[j] = aux;
+
+            j++;
+        }
+    }
+
+    // Realizando a troca no pivo
+    vet[fim] = vet[j];
+    vet[j] = pivo;
+    return j;
+}
+
+void quickSort(REGISTROI *vet, int ini, int fim) {
+    if(ini < fim) {
+        // Ordenando a partição atual.
+        int pivot = quickSortParticao(vet, ini, fim);
+
+        // Chamadas recursivas para as partições
+        quickSort(vet, ini, pivot - 1);
+        quickSort(vet, pivot + 1, fim);
+    }
+    return;
+}
+
+bool reader_create_index(char *binario, char *indice) {
+    FILE *arquivo;             // Ponteiro para acessar os arquivos
+    REGISTRO regDados;         // Variável que armazena um registro de dados do índice
+    REGISTROI *registrosi;     // Vetor de registros do índice
+    char status;               // Variável auxiliar que recebe o status do binário, para avaliar a sua concistencia
+    int tamanho;               // Variável auxiliar que recebe o número de registros no binário original
+    long long offsetReg = 17;  // Guarda o offset do registro atual no binário para salvá-lo no índice
+    bool res;                  // Recebe o resultado da função indice reescrita, para o retorno desta função
+
+    // Abrindo e verificando o arquivo binário para leitura
+    arquivo = fopen(binario, "rb");
+    if(arquivo == NULL)
+        return false;
+    
+    // Verficando se o binário aberto está concistente
+    fread(&status, sizeof(char), 1, arquivo);
+    if(status == '0')
+        return false;
+
+    // Criando o vetor de registros do índice com o número de registros do arquivo
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&tamanho, sizeof(int), 1, arquivo);
+    registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * tamanho);
+    if(registrosi == NULL)
+        return false;
+
+    // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
+    fseek(arquivo, 4, SEEK_CUR);
+    for(int i = 0; i < tamanho; i++) {
+        regDados = ler_registro_binario(arquivo);
+
+        if(regDados.removido != '1')
+            registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
+
+        // Atualizando o offset para o próximo registro
+        offsetReg += (long long) regDados.tamanhoRegistro;
+    }
+    quickSort(registrosi, 0, tamanho - 1);
+
+    // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
+    fclose(arquivo);
+    res = indice_reescrita(indice, registrosi, tamanho);
+    if(res)
+        binarioNaTela(indice);
+
+    // Desalocando a memória e retorno da funcionalidade
+    free(registrosi);
+    registrosi = NULL;
+    return res;
 }

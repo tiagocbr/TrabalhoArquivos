@@ -23,5 +23,9 @@
     // de buscas com condições próprias
     bool reader_select_where(char * binario, int qntd);
 
+    // Funcionalidade 4
+    // Cria o arquivo de índice simples de um binário pré-existente
+    bool reader_create_index(char *binario, char *indice);
+
 
 #endif

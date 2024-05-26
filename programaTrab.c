@@ -6,6 +6,7 @@ Tiago Chaves Bezerra Rocha       - 14609637
 
 #include <stdio.h>
 #include "reader.h"
+#include "indiceSimples.h"
 
 int main() {
     int opCode;           // armazena a funcionalidade escolhida pelo usuário
@@ -20,28 +21,24 @@ int main() {
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
             res = reader_create_table(arqEntrada, arqSaida);
-
-            if(!res)
-                printf("Falha no processamento do arquivo.\n");
-            break;
         
         case 2:
             scanf(" %s", arqEntrada);
             res = reader_select_from(arqEntrada);
-
-            if(!res)
-                printf("Falha no processamento do arquivo.\n");
-            break;
 
         case 3:
             scanf(" %s", arqEntrada);
             scanf("%d", &n);
             res = reader_select_where(arqEntrada, n);
 
-            if(!res)
-                printf("Falha no processamento do arquivo.\n");
-            break;
+        case 4:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            res = reader_create_index(arqEntrada, arqSaida);
     }
+
+    if(!res)
+        printf("Falha no processamento do arquivo.\n");
 
     return 0;
 }

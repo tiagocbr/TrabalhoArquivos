@@ -21,20 +21,24 @@ int main() {
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
             res = reader_create_table(arqEntrada, arqSaida);
-        
+            break;
+
         case 2:
             scanf(" %s", arqEntrada);
             res = reader_select_from(arqEntrada);
+            break;
 
         case 3:
             scanf(" %s", arqEntrada);
             scanf("%d", &n);
             res = reader_select_where(arqEntrada, n);
+            break;
 
         case 4:
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
+            break;
     }
 
     if(!res)

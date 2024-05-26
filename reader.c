@@ -358,6 +358,8 @@ bool reader_select_from(char *binario) {
     fclose(arquivo);
     return true;
 }
+
+
 //função que atualiza a lista de removidos e cabeçalho
 void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
     //SETANDO AS VARIAVEIS
@@ -422,10 +424,12 @@ void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
         } 
     }    
 }
+
+
 //função que realiza as buscas no arquivo principal e guarda os registros no vetor de registros REGS
 int busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,REGISTRO *regs,int ini,int *procurado){
     int id = registro_buscado.id;
-    int idade = registro_buscado.idade.
+    int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
@@ -480,6 +484,7 @@ int busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,REGISTRO *regs,int 
     }
     return qntdBuscas;
 }
+
 bool reader_select_where(char * binario, int qntd) {
     FILE *arquivo;          // Ponteiro para o arquivo binário
     char campo[30];         // Campo que o usuário digitará para a busca
@@ -670,6 +675,8 @@ bool reader_create_index(char *binario, char *indice) {
     free(registrosi);
     registrosi = NULL;
     return res;
+}
+
 bool busca_binaria(int id,int ini,int fim,REGISTRO_INDICE* arr,long long *offset_removido){
     while(ini<=fim){
         int meio = (ini+fim)/2;
@@ -685,6 +692,8 @@ bool busca_binaria(int id,int ini,int fim,REGISTRO_INDICE* arr,long long *offset
 }
 
 //faz a mesma coisa que a busca_no_binario so que guarda o offset e o id dos registros encontrados, e nao os registros em sí
+
+
 int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_regs,int ini,int *procurado){
     int id = registro_buscado.id;
     int idade = registro_buscado.idade.
@@ -750,6 +759,7 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
     }
     return qntdBuscas;
 }
+
 bool reader_delete_where(char *binario,char *indices,int n){
     FILE* arquivo = fopen(binario,"wb+");
     FILE* indice = fopen(indices,"rb");

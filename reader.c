@@ -16,20 +16,22 @@ struct registro{
     int tamNomeClube;
     char *nomeClube;     //campo 5
 };
-
+typedef struct offset_tamanho OT;
+struct offset_tamanho{
+    int tamanhoReg;
+    long long offsetReg;
+};
 // Função auxiliar que percorre o csv para descobrir o seu número total de registros
 int get_numero_registros(FILE* arquivo){
     char aux;
     int n=0;
-
-    fseek(arquivo,45,SEEK_SET);
 
     while(fscanf(arquivo,"%c",&aux)!=EOF){
         if(aux==',')n++;
     }
     n=n/4;
     fseek(arquivo,45,SEEK_SET);
-    return n;
+    return n-1;
 }
 
 // Função auxiliar que pega uma string lida no csv e a converte em inteiro
@@ -356,8 +358,128 @@ bool reader_select_from(char *binario) {
     fclose(arquivo);
     return true;
 }
+//função que atualiza a lista de removidos e cabeçalho
+void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
+    //SETANDO AS VARIAVEIS
+    int ponteiro_regs=0;
+    long long offset_topo = 1;
+    //atualizando o numero de registros no cabecalho
+    fseek(arquivo,17,SEEK_SET);
+    int nRegArq;
+    fread(&nRegArq,sizeof(int),1,arquivo);
+    nRegArq-=qntd;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&nRegArq,sizeof(int),1,arquivo);
+    //atualiza o numero de registros removidos no cabecalho
+    int nroRegRem=0;
+    fread(&nroRegRem,sizeof(int),1,arquivo);
+    nroRegRem+=qntd;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&nroRegRem,sizeof(int),1,arquivo);
+    //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
+    fseek(arquivo,offset_topo,SEEK_SET)
+    long long prox;
+    fread(&prox,sizeof(long long),1,arquivo);
+    long long offset_anterior = offset_topo;
+    while(ponteiro_regs<qntd){
+        //offset e tamanho do registro que quero inserir na lista de removidos
+        long long offset_registro_removido = OT[ponteiro_regs].offsetReg;
+        int tamanhoRegistro = OT[ponteiro_regs].tamanhoReg;
+        if(prox==-1){ //se estiver no final da lista
+            //coloca o elemento atual para apontar para o registro que quero inserir na lista de removidos
+            fseek(arquivo,-8,SEEK_CUR);
+            fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+            //coloca o proximo da lista como -1,pois sera inserida no final
+            fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+            prox =-1;
+            fwrite(&prox,sizeof(long long),1,arquivo);
 
-
+            ponteiro_regs++;
+            offset_anterior = offset_registro_removido+5;
+        }
+        else{
+            //pula para o proximo elemento
+            fseek(arquivo,prox+1,SEEK_SET)
+            int tamanho_registro_atual=-1;
+            long long offset_elemento_atual_da_lista = ftell(arquivo) - 1;
+            fread(&tamanho_registro_atual,sizeof(int),1,arquivo);
+            //se o proximo elemento tiver tamanho maior do que o que eu quero inserir
+            if(tamanho_registro_atual>=tamanhoRegistro){
+                //coloca o elemento removido para apontar para o registro atual
+                //na proxima iteração o prox será igual a esse elemento novamente
+                prox = offset_elemento_atual_da_lista;
+                fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+                fwrite(&prox,sizeof(long long),1,arquivo);
+                //coloca o elemento anterior para apontar para o registro removido
+                fseek(arquivo,offset_anterior,SEEK_SET);
+                fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+                ponteiro_regs++;
+                offset_anterior = offset_registro_removido+5;
+            }
+            else{
+                fread(&prox,sizeof(long long),1,arquivo);
+            }  
+        } 
+    }    
+}
+//função que realiza as buscas no arquivo principal e guarda os registros no vetor de registros REGS
+int busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,REGISTRO *regs,int ini,int *procurado){
+    int id = registro_buscado.id;
+    int idade = registro_buscado.idade.
+    char* nomeJogador =  registro_buscado.nomeJogador;
+    char* nacionalidade = registro_buscado.nacionalidade;
+    char* nomeClube = registro_buscado.nomeClube;
+    int n_registros;
+    // Salvando o numero de registros do arquivo na variavel n_registros
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&n_registros, sizeof(int), 1, arquivo);
+    // Percorrendo o arquivo para a busca atual
+    fseek(arquivo,25,SEEK_SET);
+    long long offset_prox_registro = 25;
+    long long offset_registro_removido = -1;
+    int qntdBuscas = 0;
+    for(int j = 0; j < n_registros; j++) {
+        REGISTRO r = ler_registro_binario(arquivo);
+        bool ok = true;
+        offset_registro_removido = off_set_proximo_registro;
+        offset_proximo_registro+=r.tamanhoRegistro;
+        for(int k = 1; k <= 5; k++) {
+            if(procurado[k] == 0) continue;
+            switch(k) {
+                case 1: 
+                    if(id!=r.id) 
+                        ok=false;
+                    else
+                        id_encontrado = true;
+                    break;
+                case 2: 
+                    if(idade!=r.idade)
+                        ok=false;
+                    break;
+                case 3: 
+                    if(r.nomeJogador == NULL || strcmp(nomeJogador,r.nomeJogador)!=0) ok=false;
+                    break;
+                case 4: 
+                    if(r.nacionalidade == NULL || strcmp(nacionalidade,r.nacionalidade)!=0) ok=false;
+                    break;
+                case 5: 
+                    if(r.nomeClube == NULL || strcmp(nomeClube,r.nomeClube)!=0) ok=false;
+                    break;
+            }
+        }
+        if(ok && r.removido == '0') {
+            regs[ini + qntdBuscas] = r;
+            qntdBuscas += 1;
+        }
+        else 
+            libera_registro(r);
+        if(id_encontrado) {
+            id_encontrado = 0;
+            return qntdBuscas;     // Parando a busca caso o id tenha sido encontrado
+        }
+    }
+    return qntdBuscas;
+}
 bool reader_select_where(char * binario, int qntd) {
     FILE *arquivo;          // Ponteiro para o arquivo binário
     char campo[30];         // Campo que o usuário digitará para a busca
@@ -388,7 +510,6 @@ bool reader_select_where(char * binario, int qntd) {
     // Alocando o vetor de registros
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
-
     // Alocando regs e qntdBuscas (e inicializando o último com 0)
     regs = (REGISTRO *) malloc(tamanho * sizeof(REGISTRO));
     qntdBuscas = (int *) malloc(qntd * sizeof(int));
@@ -407,73 +528,37 @@ bool reader_select_where(char * binario, int qntd) {
         for(int j=1;j<6;j++)procurado[j] = 0;
 
         // Recebendo as condições do usuário para cada parametro ad busca atual
+        REGISTRO registro_buscado;
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
 
             if(strcmp(campo,"id") == 0) {
                 procurado[1]=1;
-                scanf("%d",&id);
+                scanf("%d",&registro_buscado.id);
             }
             if(strcmp(campo,"idade") == 0) {
                 procurado[2]=1;
-                scanf("%d",&idade);
+                scanf("%d",&registro_buscado.idade);
             }
             if(strcmp(campo,"nomeJogador") == 0) {
                 procurado[3]=1;
-                scan_quote_string(nomeJogador);
+                registro_buscado.nomeJogador = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeJogador);
             }
             if(strcmp(campo,"nacionalidade") == 0) {
                 procurado[4]=1;
-                scan_quote_string(nacionalidade);
+                registro_buscado.nacionalidade = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nacionalidade);
             }
             if(strcmp(campo,"nomeClube") == 0) {
                 procurado[5]=1;
-                scan_quote_string(nomeClube);
+                registro_buscado.nomeClube = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeClube);
             }
         }
 
-        // Percorrendo o arquivo para a busca atual
-        fseek(arquivo,25,SEEK_SET);
-        for(int j = 0; j < 1000; j++) {
-            REGISTRO r = ler_registro_binario(arquivo);
-            bool ok = true;
-
-            for(int k = 1; k <= 5; k++) {
-                if(procurado[k] == 0) continue;
-                switch(k) {
-                    case 1: 
-                        if(id!=r.id) 
-                            ok=false;
-                        else
-                            id_encontrado = true;
-                        break;
-                    case 2: 
-                        if(idade!=r.idade)
-                            ok=false;
-                        break;
-                    case 3: 
-                        if(r.nomeJogador == NULL || strcmp(nomeJogador,r.nomeJogador)!=0) ok=false;
-                        break;
-                    case 4: 
-                        if(r.nacionalidade == NULL || strcmp(nacionalidade,r.nacionalidade)!=0) ok=false;
-                        break;
-                    case 5: 
-                        if(r.nomeClube == NULL || strcmp(nomeClube,r.nomeClube)!=0) ok=false;
-                        break;
-                }
-            }
-            if(ok && r.removido == '0') {
-                regs[tamanho + qntdBuscas[i]] = r;
-                qntdBuscas[i] += 1;
-
-            }
-            else 
-                libera_registro(r);
-            if(id_encontrado) {
-                id_encontrado = 0;
-                break;      // Parando a busca caso o id tenha sido encontrado
-            }
-        }
+        qntdBuscas[i] = busca_no_binario(arquivo,registro_buscado,regs,tamanho,procurado);
+        libera_registro(registro_buscado);
         tamanho += qntdBuscas[i];
     }
 
@@ -585,4 +670,311 @@ bool reader_create_index(char *binario, char *indice) {
     free(registrosi);
     registrosi = NULL;
     return res;
+bool busca_binaria(int id,int ini,int fim,REGISTRO_INDICE* arr,long long *offset_removido){
+    while(ini<=fim){
+        int meio = (ini+fim)/2;
+        if(arr[meio].id==id){
+            *offset_removido = arr[meio].offset;
+            return true;
+        }
+        else if(arr[meio].id<id)ini=meio+1;
+        else fim = meio-1;
+    }
+    return false;
+  
+}
+
+//faz a mesma coisa que a busca_no_binario so que guarda o offset e o id dos registros encontrados, e nao os registros em sí
+int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_regs,int ini,int *procurado){
+    int id = registro_buscado.id;
+    int idade = registro_buscado.idade.
+    char* nomeJogador =  registro_buscado.nomeJogador;
+    char* nacionalidade = registro_buscado.nacionalidade;
+    char* nomeClube = registro_buscado.nomeClube;
+    int n_registros;
+    // Salvando o numero de registros do arquivo na variavel n_registros
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&n_registros, sizeof(int), 1, arquivo);
+    // Percorrendo o arquivo para a busca atual
+    fseek(arquivo,25,SEEK_SET);
+    long long offset_prox_registro = 25;
+    long long offset_registro_removido = -1;
+    int qntdBuscas = 0;
+    for(int j = 0; j < n_registros; j++) {
+        REGISTRO r = ler_registro_binario(arquivo);
+        bool ok = true;
+        offset_registro_removido = off_set_proximo_registro;
+        offset_proximo_registro+=r.tamanhoRegistro;
+        for(int k = 1; k <= 5; k++) {
+            if(procurado[k] == 0) continue;
+            switch(k) {
+                case 1: 
+                    if(id!=r.id) 
+                        ok=false;
+                    else
+                        id_encontrado = true;
+                    break;
+                case 2: 
+                    if(idade!=r.idade)
+                        ok=false;
+                    break;
+                case 3: 
+                    if(r.nomeJogador == NULL || strcmp(nomeJogador,r.nomeJogador)!=0) ok=false;
+                    break;
+                case 4: 
+                    if(r.nacionalidade == NULL || strcmp(nacionalidade,r.nacionalidade)!=0) ok=false;
+                    break;
+                case 5: 
+                    if(r.nomeClube == NULL || strcmp(nomeClube,r.nomeClube)!=0) ok=false;
+                    break;
+            }
+        }
+        if(ok && r.removido == '0') {
+            regs[ini + qntdBuscas].offsetReg = ftell(arquivo) - r.tamanhoRegistro; //offset para atualizar a lista depois
+            id_regs[ini + qntdBuscas] = r.id; //id para atualizar o registros de indices depois
+            regs[ini+qntdBuscas].tamanhoReg = r.tamanhoRegistro; //tamanho para atualizar a lista de removidos de maneira mais otimizada
+            qntdBuscas += 1;
+            //marcando o arquivo como removido
+            fseek(arquivo,offset_registro_removido,SEEK_SET);
+            char remov='1';
+            fwrite(&remov,sizeof(char),1,arquivo);
+            fseek(arquivo,offset_prox_registro,SEEK_SET);
+            libera_registro(r);
+        }
+        else 
+            libera_registro(r);
+        if(id_encontrado) {
+            id_encontrado = 0;
+            return qntdBuscas;     // Parando a busca caso o id tenha sido encontrado
+        }
+    }
+    return qntdBuscas;
+}
+bool reader_delete_where(char *binario,char *indices,int n){
+    FILE* arquivo = fopen(binario,"wb+");
+    FILE* indice = fopen(indices,"rb");
+    //fazendo as verificações de status
+    char status;
+    fread(&status,sizeof(char),1,arquivo);
+    if(status=='0'){
+        printf("Falha no processamento do arquivo.");
+    }
+    else{
+        fseek(arquivo,-1,SEEK_CUR);
+        status='0';
+        fwrite(&status,sizeof(char),1,arquivo);
+    }
+    fread(&status,sizeof(char),1,indice);
+    if(status=='0'){
+        printf("Falha no processamento do arquivo.");
+    }
+    else{
+        fseek(indice,-1,SEEK_CUR);
+        status='0';
+        fwrite(&status,sizeof(char),1,indice);
+    }
+    //ler o arquivo de indices inteiro e trazer para a ram no vetor vetor_indices
+    REGISTRO_INDICE *vetor_indices = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*n_registros);
+    //set status e close arquivo de indices
+    fseek(indice,0,SEEK_SET);
+    status='1';
+    fwrite(&status,sizeof(char),1,indice);
+    fclose(indice);
+    indice.fclose();
+
+    int procurado[6];
+    char campo[20];
+    int n_registros;
+    int busca_total=0;
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&n_registros, sizeof(int), 1, arquivo);
+    OT *regs= (long long*) malloc(sizeof(long long)*n_registros);
+    int *id_regs = (int*)malloc(sizeof(int)*n_registros);
+    for(int i = 0; i < n; i++){
+        int params;
+        scanf("%d",&params);
+
+        // Resetando todos os campos como não procurados pelo usuário na busca
+        for(int j=1;j<6;j++)procurado[j] = 0;
+        REGISTRO registro_buscado;
+        // Recebendo as condições do usuário para cada parametro da busca atual
+        for(int j=0;j<params;j++){
+            scanf(" %s",campo);
+
+            if(strcmp(campo,"id") == 0) {
+                procurado[1]=1;
+                scanf("%d",&registro_buscado.id);
+            }
+            if(strcmp(campo,"idade") == 0) {
+                procurado[2]=1;
+                scanf("%d",&registro_buscado.idade);
+            }
+            if(strcmp(campo,"nomeJogador") == 0) {
+                procurado[3]=1;
+                registro_buscado.nomeJogador = (char*)malloc(sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeJogador);
+            }
+            if(strcmp(campo,"nacionalidade") == 0) {
+                procurado[4]=1;
+                registro_buscado.nacionalidade = (char*)malloc(sizeof(char)*100);
+                scan_quote_string(registro_buscado.nacionalidade);
+            }
+            if(strcmp(campo,"nomeClube") == 0) {
+                procurado[5]=1;
+                registro_buscado.nomeClube = (char*)malloc(sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeClube);
+            }
+        }
+    
+        if(procurado[1]==0){
+            //busca no arquivo principal e guarda os offsets ,o id e o tamanho dos registros encontrados;
+            int busca_atual = busca_para_remover(arquivo,registro_buscado,regs,id_regs,busca_total,procurado);
+            busca_total+=busca_atual;
+        }
+        else{
+            int id=registro_buscado.id;
+            long long offset_removido;
+            //faz a busca binaria no vetor_indices e guarda o resultado em offset_removido
+            bool ok = busca_binaria(id,0,n_registros-1,vetor_indices,&offset_removido);
+            if(ok){
+                fseek(arquivo,offset_removido,SEEK_SET);
+                char removido;
+                fread(&removido,sizeof(char),1,arquivo);
+                if(removido=='1')continue;
+                fseek(arquivo,-1,SEEK_CUR);
+                removido='1';
+                fwrite(&removido,sizeof(char),1,arquivo);
+                int tamanho_reg_rem;
+                fread(&tamanho_reg_rem,sizeof(int),1,arquivo);
+                //adiciona no regs para remover depois
+                regs[busca_total].offsetReg = offset_removido;
+                id_regs[busca_total] = id;
+                regs[busca_total].tamanhoReg = tamanho_reg_rem;
+                busca_total+=1;
+            }
+        }
+
+        //dando free nos campos do registro buscado
+        libera_registro(registro_buscado);
+    }
+    //removendo no arquivo principal os registros encontrados nas buscas
+
+    //Fazendo um novo vetor para colocar no arquivo de indices
+    REGISTRO_INDICE *vetor_apos_remocao = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*(n_registros-busca_total));
+    int ponteiro_vetor_apos_remocao=0;
+    int ponteiro_regs=0;
+    //quick sort no vetor id_regs
+    for(auto u:vetor_indices){
+        if(ponteiro_regs<busca_total)
+            if(u.id == id_regs[ponteiro_regs]){
+                ponteiro_regs++;
+                continue;
+            }
+        vetor_apos_remocao[ponteiro_vetor_apos_remocao] = u;
+        ponteiro_vetor_apos_remocao++;
+    }
+    //reescrever o arquivo de indices a partir do vetor vetor_apos_remocao
+    //quick sort em regs
+    //reorganizar a lista de removidos
+    atualiza_lista(arquivo,regs,busca_total);
+
+    //liberando memoria
+    free(regs);
+    free(id_regs);
+    free(vetor_indices);
+    free(vetor_apos_remocao);
+
+
+    //fechando arquivo
+    fseek(arquivo,0,SEEK_SET);
+    status='1';
+    fwrite(&status,sizeof(char),1,arquivo);
+    fclose(arquivo);
+}
+
+void inserir_arquivo_principal(FILE* arquivo,REGISTRO* regs,int qntd){
+    int reaproveitados=0;//variavel para guardar quantos registros ocuparam lugar de registros logicamente removidos
+    int ponteiro_regs=0;
+    fseek(arquivo,1,SEEK_SET);
+    int prox;
+    fread(&prox,sizeof(int),1,arquivo);
+    int offset_anterior = 1;
+    while(ponteiro_regs<qntd){
+        if(prox==-1){//inserir o resto no final do arquivo;
+            fseek(arquivo,0,SEEK_END);
+            for(int i=ponteiro_regs;i<qntd;i++)escreve_registro(regs[i]);
+            break;
+        }
+        else{
+            fseek(arquivo,prox+1,SEEK_SET);
+            int tamanho;
+            fread(&tamanho,sizeof(int),1,arquivo);
+            fread(&prox,sizeof(int),1,arquivo);
+            if(tamanho>=regs[ponteiro_regs].tamanhoRegistro){
+                reaproveitados++;
+                fseek(arquivo,-12,SEEK_CUR);
+                regs[ponteiro_regs].tamanhoRegistro = tamanho;
+                escreve_registro(regs[ponteiro_regs]);
+                char lixo = '$';
+                fwrite(&lixo,sizeof(char),tamanho-regs[ponteiro_regs].tamanhoRegistro,arquivo);
+                ponteiro_regs++;
+                fseek(arquivo,offset_anterior,SEEK_SET);
+                fwrite(&prox,sizeof(int),1,arquivo);
+            }
+            else{
+                offset_anterior = ftell(arquivo) - 8;
+            }
+        }
+    }
+    //atualizando os valores de n_registros e n_registros removidos no cabecalho
+    fseek(arquivo,17,SEEK_SET);
+    int n_reg;
+    fread(&n_reg,sizeof(int),1,arquivo);
+    n_reg+=qntd;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_reg,sizeof(int),1,arquivo);
+    fread(&n_reg,sizeof(int),1,arquivo);
+    n_reg-=reaproveitados;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_reg,sizeof(int),1,arquivo);
+}
+
+int get_tamanho_string(char *string){
+    int ct=0;
+    while(string[ct]!='\0'){
+        ct++;
+    }
+    return ct;
+}
+void reader_insert_into(char *binario,char *indices,int n){
+    REGISTRO* regs=(REGISTRO*)malloc(sizeof(REGISTRO)*n);
+    for(int i=0;i<n;i++){
+        scanf("%d %d",&regs[i].id,&regs[i].idade);
+        regs[i].nomeJogador = (char*) malloc (sizeof(char)*100);
+        regs[i].nacionalidade = (char*) malloc(sizeof(char)*100);
+        regs[i].nomeClube = (char*) malloc(sizeof(char)*100);
+        regs[i].removido = '0';
+        regs[i].prox = '-1';
+        scan_quote_string(regs[i].nomeJogador);
+        scan_quote_string(regs[i].nacionalidade);
+        scan_quote_string(regis[i].nomeClube);
+        regs[i].tamNomeJog = get_tamanho_string(regs[i].nomeJogador);
+        regs[i].tamNacionalidade = get_tamanho_string(regs[i].nacionalidade);
+        regs[i].tamNomeClube = get_tamanho_string(regs[i].nomeClube);
+        regs[i].tamanhoRegistro = 33 + regs[i].tamNomeJog + regs[i].tamNacionalidade + regs[i].tamNomeClube;
+
+    }
+    FILE* arquivo = fopen(binario,"wb+");
+    char status;
+    fread(&status,sizeof(char),1,arquivo);
+    if(status=='0'){
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+    status='1';
+    fseek(arquivo,-1,SEEK_CUR);
+    fwrite(&status,sizeof(char),1,arquivo);
+    inserir_arquivo_principal(arquivo,regs,n);
+    //
+
 }

@@ -680,7 +680,7 @@ bool reader_create_index(char *binario, char *indice) {
     return res;
 }
 
-bool busca_binaria(int id,int ini,int fim,REGISTRO_INDICE* arr,long long *offset_removido){
+bool busca_binaria(int id,int ini,int fim,REGISTROI* arr,long long *offset_removido){
     while(ini<=fim){
         int meio = (ini+fim)/2;
         if(arr[meio].id==id){
@@ -766,11 +766,13 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
 bool reader_delete_where(char *binario,char *indices,int n){
     FILE* arquivo = fopen(binario,"wb+");
     FILE* indice = fopen(indices,"rb");
+    int n_registros;
+
     //fazendo as verificações de status
     char status;
     fread(&status,sizeof(char),1,arquivo);
     if(status=='0'){
-        printf("Falha no processamento do arquivo.");
+        return 0;
     }
     else{
         fseek(arquivo,-1,SEEK_CUR);
@@ -779,28 +781,28 @@ bool reader_delete_where(char *binario,char *indices,int n){
     }
     fread(&status,sizeof(char),1,indice);
     if(status=='0'){
-        printf("Falha no processamento do arquivo.");
+        return 0;
     }
-    else{
-        fseek(indice,-1,SEEK_CUR);
-        status='0';
-        fwrite(&status,sizeof(char),1,indice);
-    }
+    fclose(indice); // Se índice está concistente, poderemos carregá-lo!
+
     //ler o arquivo de indices inteiro e trazer para a ram no vetor vetor_indices
-    REGISTRO_INDICE *vetor_indices = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*n_registros);
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&n_registros, sizeof(int), 1, arquivo);
+    REGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)
+        return 0;
+
+
     //set status e close arquivo de indices
     fseek(indice,0,SEEK_SET);
     status='1';
     fwrite(&status,sizeof(char),1,indice);
     fclose(indice);
-    indice.fclose();
 
     int procurado[6];
     char campo[20];
-    int n_registros;
     int busca_total=0;
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
+
     OT *regs= (long long*) malloc(sizeof(long long)*n_registros);
     int *id_regs = (int*)malloc(sizeof(int)*n_registros);
     for(int i = 0; i < n; i++){
@@ -873,7 +875,7 @@ bool reader_delete_where(char *binario,char *indices,int n){
     //removendo no arquivo principal os registros encontrados nas buscas
 
     //Fazendo um novo vetor para colocar no arquivo de indices
-    REGISTRO_INDICE *vetor_apos_remocao = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*(n_registros-busca_total));
+    REGISTROI *vetor_apos_remocao = (REGISTROI *) malloc (sizeof(REGISTROI)*(n_registros-busca_total));
     int ponteiro_vetor_apos_remocao=0;
     int ponteiro_regs=0;
     //quick sort no vetor id_regs
@@ -903,6 +905,7 @@ bool reader_delete_where(char *binario,char *indices,int n){
     status='1';
     fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
+    return true;
 }
 
 void inserir_arquivo_principal(FILE* arquivo,REGISTRO* regs,int qntd){
@@ -970,7 +973,7 @@ void reader_insert_into(char *binario,char *indices,int n){
         regs[i].prox = '-1';
         scan_quote_string(regs[i].nomeJogador);
         scan_quote_string(regs[i].nacionalidade);
-        scan_quote_string(regis[i].nomeClube);
+        scan_quote_string(regs[i].nomeClube);
         regs[i].tamNomeJog = get_tamanho_string(regs[i].nomeJogador);
         regs[i].tamNacionalidade = get_tamanho_string(regs[i].nacionalidade);
         regs[i].tamNomeClube = get_tamanho_string(regs[i].nomeClube);

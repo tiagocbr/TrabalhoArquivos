@@ -379,7 +379,7 @@ void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
     fseek(arquivo,-4,SEEK_CUR);
     fwrite(&nroRegRem,sizeof(int),1,arquivo);
     //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
-    fseek(arquivo,offset_topo,SEEK_SET)
+    fseek(arquivo,offset_topo,SEEK_SET);
     long long prox;
     fread(&prox,sizeof(long long),1,arquivo);
     long long offset_anterior = offset_topo;
@@ -632,8 +632,9 @@ bool reader_create_index(char *binario, char *indice) {
     REGISTROI *registrosi;     // Vetor de registros do índice
     char status;               // Variável auxiliar que recebe o status do binário, para avaliar a sua concistencia
     int tamanho;               // Variável auxiliar que recebe o número de registros no binário original
-    long long offsetReg = 17;  // Guarda o offset do registro atual no binário para salvá-lo no índice
+    long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
     bool res;                  // Recebe o resultado da função indice reescrita, para o retorno desta função
+    int i = 0;                 // Index para o vetor de registrosi
 
     // Abrindo e verificando o arquivo binário para leitura
     arquivo = fopen(binario, "rb");
@@ -654,11 +655,13 @@ bool reader_create_index(char *binario, char *indice) {
 
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
     fseek(arquivo, 4, SEEK_CUR);
-    for(int i = 0; i < tamanho; i++) {
+    while(!feof(arquivo)) {
         regDados = ler_registro_binario(arquivo);
 
-        if(regDados.removido != '1')
+        if((regDados.removido != '1') && !feof(arquivo)) {
             registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
+            i++;
+        }
 
         // Atualizando o offset para o próximo registro
         offsetReg += (long long) regDados.tamanhoRegistro;

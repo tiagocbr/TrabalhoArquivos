@@ -1006,7 +1006,7 @@ bool reader_insert_into(char *binario,char *indice,int n){
     if(status=='0'){
         return false;
     }
-    status='1';
+    status='0';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
     REGISTROI *vetor_indices = indice_carregamento(indice, binario);
@@ -1055,7 +1055,9 @@ bool reader_insert_into(char *binario,char *indice,int n){
 
     //inserir_no_arquivo_de_inices
     indice_reescrita(indice, vetor_indices,n_reg+n);
-
+    status='1';
+    fseek(arquivo,0,SEEK_SET);
+    fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
     return true;
 }

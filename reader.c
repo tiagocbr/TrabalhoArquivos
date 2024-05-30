@@ -206,10 +206,10 @@ bool reader_create_table(char* csv,char* binario) {
     cabecalho_set_nroRegArq(cabecalho,n);
 
     // Criando o binário
-    arquivo = fopen(binario, "wb"); 
+    FILE* arquivo_bin = fopen(binario, "wb"); 
     if(arquivo == NULL) {return false;}
     // Escrevendo o registro de cabeçalho no binário
-    escreve_cabecalho(arquivo, cabecalho);
+    escreve_cabecalho(arquivo_bin, cabecalho);
 
     // Lendo no csv cada registro e armazenando-o no binário
     for(int registro_atual=0;registro_atual<n;registro_atual++){
@@ -221,7 +221,7 @@ bool reader_create_table(char* csv,char* binario) {
         for(int i=1;i<=5;i++) {
             ler_campo(arquivo,i,&r, cabecalho);
         }
-        escreve_registro(arquivo, &r);
+        escreve_registro(arquivo_bin, &r);
         libera_registro(r);
     }
     fclose(arquivo);
@@ -229,10 +229,10 @@ bool reader_create_table(char* csv,char* binario) {
 
     
 
-    fseek(arquivo, 0, SEEK_SET);
+    fseek(arquivo_bin, 0, SEEK_SET);
     cabecalho_set_status(cabecalho);
-    escreve_cabecalho(arquivo,cabecalho);
-    fclose(arquivo);
+    escreve_cabecalho(arquivo_bin,cabecalho);
+    fclose(arquivo_bin);
 
 
     cabecalho_apagar(&cabecalho);
@@ -999,18 +999,18 @@ int get_tamanho_string(char *string){
     }
     return ct;
 }
-void reader_insert_into(char *binario,char *indice,int n){
+bool reader_insert_into(char *binario,char *indice,int n){
     FILE* arquivo = fopen(binario,"wb+");
     char status;
     fread(&status,sizeof(char),1,arquivo);
     if(status=='0'){
-        printf("Falha no processamento do arquivo.");
-        return;
+        return false;
     }
     status='1';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
     REGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices==NULL)return false;
     int reaproveitados=0;
     fseek(arquivo,17,SEEK_SET);
     int n_reg;
@@ -1057,5 +1057,5 @@ void reader_insert_into(char *binario,char *indice,int n){
     indice_reescrita(indice, vetor_indices,n_reg+n);
 
     fclose(arquivo);
-
+    return true;
 }

@@ -32,5 +32,7 @@
     // Esta funcionalidade será repetida n vezes
     bool reader_delete_where(char *binario ,char *indices,int n);
 
+    bool reader_insert_into(char* binario,char* indice,int n); 
+
 
 #endif

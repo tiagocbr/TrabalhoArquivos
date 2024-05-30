@@ -426,19 +426,22 @@ bool busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     char* nomeJogador =  registro_buscado.nomeJogador;
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
-    int n_registros;
     bool id_encontrado=false;
     bool ok=false;
-    // Salvando o numero de registros do arquivo na variavel n_registros
+    // Salvando o numero de registros e registros removidos
+    int n_registros;
+    int n_removidos;
     fseek(arquivo, 17, SEEK_SET);
     fread(&n_registros, sizeof(int), 1, arquivo);
+    fread(&n_removidos,sizeof(int),1,arquivo);
     // Percorrendo o arquivo para a busca atual
     fseek(arquivo,25,SEEK_SET);
     long long offset_prox_registro = 25;
     long long offset_registro_removido = -1;
     int qntdBuscas = 0;
-    for(int j = 0; j < n_registros; j++) {
+    for(int j = 0; j < n_registros+n_removidos; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
+        if(r.removido == '1')continue;
         bool ok = true;
         offset_registro_removido = offset_prox_registro;
         offset_prox_registro+=r.tamanhoRegistro;
@@ -744,17 +747,19 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
     int n_registros;
+    int n_removidos;
     bool id_encontrado=false;
     // Salvando o numero de registros do arquivo na variavel n_registros
     fseek(arquivo, 17, SEEK_SET);
     fread(&n_registros, sizeof(int), 1, arquivo);
+    fread(&n_removidos,sizeof(int),1,arquivo);
     // Percorrendo o arquivo para a busca atual
-    fseek(arquivo,25,SEEK_SET);
     long long offset_prox_registro = 25;
     long long offset_registro_removido = -1;
     int qntdBuscas = 0;
-    for(int j = 0; j < n_registros; j++) {
+    for(int j = 0; j < n_registros+n_removidos; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
+        if(r.removido == '1')continue;
         bool ok = true;
         offset_registro_removido = offset_prox_registro;
         offset_prox_registro+=r.tamanhoRegistro;
@@ -926,7 +931,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
     indice_reescrita(indice, vetor_apos_remocao,n_registros-busca_total);
     //quick sort em regs
     quickSort_ot(regs,0,busca_total-1);
-    //reorganizar a lista de removidos a partir do vetor regs ordenado
+    //reorganizar a lista de removidos a partir do vetor regs ordenado e atualiza o nRegRem e Nreg do cabecalho
     atualiza_lista(arquivo,regs,busca_total);
 
     //liberando memoria
@@ -944,51 +949,47 @@ bool reader_delete_where(char *binario,char *indice,int n){
     return true;
 }
 
-void inserir_arquivo_principal(FILE* arquivo,REGISTRO* regs,int qntd){
-    int reaproveitados=0;//variavel para guardar quantos registros ocuparam lugar de registros logicamente removidos
-    int ponteiro_regs=0;
+//insere o registro no arquivo principal e guarda o byte onde foi inserudo
+//retorna 1 se o arquivo foi cololocado em espaço de registro logicamente removido
+//retorna 0 caso contrario
+int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
+    int reaproveitados=0;
     fseek(arquivo,1,SEEK_SET);
-    int prox;
-    fread(&prox,sizeof(int),1,arquivo);
-    int offset_anterior = 1;
-    while(ponteiro_regs<qntd){
-        if(prox==-1){//inserir o resto no final do arquivo;
+    long long prox;
+    fread(&prox,sizeof(long long),1,arquivo);
+    long long offset_anterior = 1;
+    while(1){
+        if(prox==-1){//inserir no final do arquivo;
             fseek(arquivo,0,SEEK_END);
-            for(int i=ponteiro_regs;i<qntd;i++)escreve_registro(arquivo,&regs[i]);
+            *byte = ftell(arquivo);
+            escreve_registro(arquivo,reg);
             break;
         }
-        else{
+        else{ //pula pro proximo e compara com o tamanho de reg
             fseek(arquivo,prox+1,SEEK_SET);
             int tamanho;
             fread(&tamanho,sizeof(int),1,arquivo);
-            fread(&prox,sizeof(int),1,arquivo);
-            if(tamanho>=regs[ponteiro_regs].tamanhoRegistro){
-                reaproveitados++;
-                fseek(arquivo,-12,SEEK_CUR);
-                regs[ponteiro_regs].tamanhoRegistro = tamanho;
-                escreve_registro(arquivo,&regs[ponteiro_regs]);
+            fread(&prox,sizeof(long long),1,arquivo);
+            if(tamanho>=reg->tamanhoRegistro){ // se o tamanho couber o arquivo a ser inserido,entao insere
+                reaproveitados=1;
+                fseek(arquivo,-13,SEEK_CUR);
+                int guardar_tamanho = reg->tamanhoRegistro;
+                reg->tamanhoRegistro = tamanho;
+                *byte = ftell(arquivo);
+                escreve_registro(arquivo,reg);
                 char lixo = '$';
-                fwrite(&lixo,sizeof(char),tamanho-regs[ponteiro_regs].tamanhoRegistro,arquivo);
-                ponteiro_regs++;
+                fwrite(&lixo,sizeof(char),tamanho-guardar_tamanho,arquivo);
+                //coloca o anterior para apontar para o proximo
                 fseek(arquivo,offset_anterior,SEEK_SET);
-                fwrite(&prox,sizeof(int),1,arquivo);
+                fwrite(&prox,sizeof(long long),1,arquivo);
+                break;
             }
-            else{
+            else{ //caso contrario continua o loop e guarda o offset;
                 offset_anterior = ftell(arquivo) - 8;
             }
         }
     }
-    //atualizando os valores de n_registros e n_registros removidos no cabecalho
-    fseek(arquivo,17,SEEK_SET);
-    int n_reg;
-    fread(&n_reg,sizeof(int),1,arquivo);
-    n_reg+=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_reg,sizeof(int),1,arquivo);
-    fread(&n_reg,sizeof(int),1,arquivo);
-    n_reg-=reaproveitados;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_reg,sizeof(int),1,arquivo);
+    return reaproveitados;
 }
 
 int get_tamanho_string(char *string){
@@ -998,24 +999,7 @@ int get_tamanho_string(char *string){
     }
     return ct;
 }
-void reader_insert_into(char *binario,char *indices,int n){
-    REGISTRO* regs=(REGISTRO*)malloc(sizeof(REGISTRO)*n);
-    for(int i=0;i<n;i++){
-        scanf("%d %d",&regs[i].id,&regs[i].idade);
-        regs[i].nomeJogador = (char*) malloc (sizeof(char)*100);
-        regs[i].nacionalidade = (char*) malloc(sizeof(char)*100);
-        regs[i].nomeClube = (char*) malloc(sizeof(char)*100);
-        regs[i].removido = '0';
-        regs[i].prox = -1;
-        scan_quote_string(regs[i].nomeJogador);
-        scan_quote_string(regs[i].nacionalidade);
-        scan_quote_string(regs[i].nomeClube);
-        regs[i].tamNomeJog = get_tamanho_string(regs[i].nomeJogador);
-        regs[i].tamNacionalidade = get_tamanho_string(regs[i].nacionalidade);
-        regs[i].tamNomeClube = get_tamanho_string(regs[i].nomeClube);
-        regs[i].tamanhoRegistro = 33 + regs[i].tamNomeJog + regs[i].tamNacionalidade + regs[i].tamNomeClube;
-
-    }
+void reader_insert_into(char *binario,char *indice,int n){
     FILE* arquivo = fopen(binario,"wb+");
     char status;
     fread(&status,sizeof(char),1,arquivo);
@@ -1026,8 +1010,52 @@ void reader_insert_into(char *binario,char *indices,int n){
     status='1';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
-    inserir_arquivo_principal(arquivo,regs,n);
+    REGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    int reaproveitados=0;
+    fseek(arquivo,17,SEEK_SET);
+    int n_reg;
+    fread(&n_reg,sizeof(int),1,arquivo);
+    int espacoMax = n_reg;
+    for(int i=0;i<n;i++){
+        REGISTRO r;
+        scanf("%d %d",&r.id,&r.idade);
+        r.nomeJogador = (char*) malloc (sizeof(char)*100);
+        r.nacionalidade = (char*) malloc(sizeof(char)*100);
+        r.nomeClube = (char*) malloc(sizeof(char)*100);
+        r.removido = '0';
+        r.prox = -1;
+        scan_quote_string(r.nomeJogador);
+        scan_quote_string(r.nacionalidade);
+        scan_quote_string(r.nomeClube);
+        r.tamNomeJog = get_tamanho_string(r.nomeJogador);
+        r.tamNacionalidade = get_tamanho_string(r.nacionalidade);
+        r.tamNomeClube = get_tamanho_string(r.nomeClube);
+        r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
+        //insere no arquivo principal e guarda o byte q foi inserido
+        long long byte;
+        reaproveitados+=inserir_arquivo_principal(arquivo,&r,&byte);
+        //insere no vetor de indices
+        REGISTROI x;
+        x.byteOffset = byte;
+        x.id = r.id;
+        indice_inserir(vetor_indices, x, n_reg+i, &espacoMax);
+        libera_registro(r);
+    }
+    //atualizando  o n_registros e o n_registros removidos do arquivo
+    int n_registros;
+    fseek(arquivo, 17, SEEK_SET);
+    fread(&n_registros, sizeof(int), 1, arquivo);
+    n_registros+=n;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_registros,sizeof(int),1,arquivo);
+    fread(&n_registros,sizeof(int),1,arquivo);
+    n_registros-=reaproveitados;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&n_registros,sizeof(int),1,arquivo);
+
     //inserir_no_arquivo_de_inices
+    indice_reescrita(indice, vetor_indices,n_reg+n);
+
     fclose(arquivo);
 
 }

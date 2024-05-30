@@ -47,7 +47,7 @@ bool indice_inserir(REGISTROI *registros, REGISTROI novo, int nReg, int *espacoM
     if(registros != NULL) {
         // Realocando mais 20 posições na memória, caso necessário
         if(nReg == *espacoMax) {
-            registros = (REGISTROI *) realloc(registros, (20 + nReg * sizeof(REGISTROI)));
+            registros = (REGISTROI *) realloc(registros, ((20 + nReg) * sizeof(REGISTROI)));
             *espacoMax += 20; 
         }
 

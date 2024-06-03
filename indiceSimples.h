@@ -17,7 +17,6 @@
     typedef struct vetRegistroi VETREGISTROI;
 
     // AUXILIARES PARA OPERAÇÕES EM CÓDIGOS EXTERNOS
-
     // Função auxiliar para criar na memória principal um registro do arquivo de ínidce
     // Apartir de um registro de dados lido
     REGISTROI indice_criar_registro(int id, long long offset);
@@ -27,7 +26,6 @@
 
 
     // FUNÇÕES PARA MANIPULAR O VETOR DO ÍNDICE SIMPLES NA MEMÓRIA
-
     // Cria o arquivo binário de índices a partir de um vetor de registrosi fornecido pelo arquivo principal
     bool indice_criar(char *indice, REGISTROI *registros, int tamanho);
 
@@ -50,5 +48,9 @@
 
     // Desaloca o vetor de registros na memória principal
     bool indice_destruir(VETREGISTROI *registros);
+
+
+    void imprimeIndice(char *indice);
+    void imprimeVetRegistroi(VETREGISTROI *vet);
 
 #endif

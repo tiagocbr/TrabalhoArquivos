@@ -22,4 +22,4 @@ regCabecalho.o: regCabecalho.c regCabecalho.h
 
 
 clean:
-	rm *.o programaTrab binario.bin
+	rm *.o programaTrab binario.bin index.bin

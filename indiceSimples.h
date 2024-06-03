@@ -30,7 +30,7 @@
     bool indice_remover(REGISTROI *registros, int idBuscado, int tamanho);
 
     // Carrega os registros do arquivo de índices para um vetor na memória princiapl
-    REGISTROI *indice_carregamento(char *indice, char *binario);
+    bool indice_carregamento(char *indice, char *binario,REGISTROI* registros);
 
     // Dado um arquivo inconcistente, ela o reescreve com os registros no vetor em memória principal
     // Importante para a inserção e remoção no binário com índice

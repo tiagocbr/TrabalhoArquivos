@@ -15,7 +15,6 @@ bool concistente(FILE *ptrArquivo) {
     if(ptrArquivo != NULL) {
         char status;
         fread(&status, sizeof(char), 1, ptrArquivo);
-
         if(status == '1')
             return true;
         }
@@ -85,20 +84,20 @@ bool indice_remover(REGISTROI *registros, int idBuscado, int tamanho) {
     return false;
 }
 
-REGISTROI *indice_carregamento(char *indice, char *binario) {
+bool indice_carregamento(char *indice, char *binario,REGISTROI* registros) {
     FILE *ptrIndice, *ptrBinario; // Ponteiros para os arquivos
-    REGISTROI *registros;         // Vetor de registrosi a ser retornado
     int tamanho;                  // Tamanho do vetor de registros
 
     // Abrindo o arquivo de índice e verificando se ele está concistente.
     ptrIndice = fopen(indice, "rb");
-    if(!concistente(ptrIndice))
-        return NULL;
-
+    if(!concistente(ptrIndice)){
+        return false;
+    }
     // Abrindo o arquivo de dados para obter o número de registros
     ptrBinario = fopen(binario, "rb");
-    if(!concistente(ptrBinario))
-        return NULL;
+    if(!concistente(ptrBinario)){
+        return false;
+    }
     
     fseek(ptrBinario, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, ptrBinario);
@@ -107,7 +106,7 @@ REGISTROI *indice_carregamento(char *indice, char *binario) {
     // Alocando memória e passando os valores do arquivo para o vetor
     registros = (REGISTROI *) malloc(tamanho * sizeof(REGISTROI));
     if(registros == NULL)
-        return NULL;
+        return false;
     
     for(int i = 0; i < tamanho; i++) {
         fread(&registros[i].id, sizeof(int), 1, ptrIndice);
@@ -115,7 +114,7 @@ REGISTROI *indice_carregamento(char *indice, char *binario) {
     }
 
     fclose(ptrIndice);
-    return registros;
+    return true;
 }
 
 bool indice_reescrita(char *indice, REGISTROI *regs, int nRegs) {

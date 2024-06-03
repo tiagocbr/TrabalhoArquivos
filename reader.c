@@ -69,16 +69,10 @@ void imprime_registro(REGISTRO r) {
     }
 
     // Imprimindo todos os registros não logicamente removidos
-    if(1) {
+    if(r.removido == '0') {
         printf("Nome do Jogador: %s\n", r.nomeJogador);
         printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        printf("Clube do Jogador: %s\n", r.nomeClube);
-        printf("Removido: %c\n", r.removido);
-        printf("id: %d\n", r.id);
-        printf("prox: %lld\n", r.prox);
-        printf("Idade: %d\n", r.idade);
-        printf("Tamanho: %d\n\n",r.tamanhoRegistro);
-        
+        printf("Clube do Jogador: %s\n\n", r.nomeClube);  
     }
 }
 
@@ -263,7 +257,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
     long long prox = ini+r.tamanhoRegistro;
 
     // Pulando os campos variáveis caso o registro esteja lógicamente removido
-    if(0) {
+    if(r.removido == '1') {
         fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
         fseek(arquivo, r.tamNomeJog, SEEK_CUR);
         fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);

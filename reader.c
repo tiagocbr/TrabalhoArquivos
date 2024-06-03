@@ -901,7 +901,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
 //insere o registro no arquivo principal e guarda o byte onde foi inserudo
 //retorna 1 se o arquivo foi cololocado em espaço de registro logicamente removido
 //retorna 0 caso contrario
-int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
+/*int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
     int reaproveitados=0;
     fseek(arquivo,1,SEEK_SET);
     long long prox;
@@ -951,6 +951,9 @@ bool reader_insert_into(char *binario,char *indice,int n){
     status='0';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
+    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)return false;
+    int reaproveitados=0;
     fseek(arquivo,17,SEEK_SET);
     int n_reg;
     fread(&n_reg,sizeof(int),1,arquivo);
@@ -994,10 +997,10 @@ bool reader_insert_into(char *binario,char *indice,int n){
     fwrite(&n_registros,sizeof(int),1,arquivo);
 
     //inserir_no_arquivo_de_inices
-    indice_reescrita(indice, vetor_indices,n_reg+n);
+    indice_reescrita(indice, vetor_indices);
     status='1';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
     return true;
-}
+}*/

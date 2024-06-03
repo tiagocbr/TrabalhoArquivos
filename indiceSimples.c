@@ -14,6 +14,18 @@ REGISTROI indice_criar_registro(int id, long long offset) {
     return novoReg;
 }
 
+REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos) {
+    if(vet != NULL && pos < vet->nReg) 
+        return vet->vet[pos];
+    
+    // Do contrário, retorna um REGISTROI com id indicando que é nulo (-1)
+    REGISTROI regNulo;
+    regNulo.id = -1;
+    regNulo.byteOffset = -1;
+    
+    return regNulo;
+}
+
 VETREGISTROI *indice_criar_vetor(int tamanho) {
     VETREGISTROI *novoVetor;
 
@@ -149,9 +161,14 @@ VETREGISTROI *indice_carregamento(char *indice, char *binario) {
     if(!consistente(ptrBinario))
         return NULL;
     
+    // Criando o vetor de registrosi
+    registros = (VETREGISTROI *) malloc(sizeof(VETREGISTROI));
+    if(registros == NULL)
+        return NULL;
+
     fseek(ptrBinario, 17, SEEK_SET);
     fread(&registros->espacoMax, sizeof(int), 1, ptrBinario);
-    registros->espacoMax = registros->nReg;
+    registros->nReg = registros->espacoMax;
     fclose(ptrBinario);
 
     // Alocando memória e passando os valores do arquivo para o vetor
@@ -165,7 +182,7 @@ VETREGISTROI *indice_carregamento(char *indice, char *binario) {
     }
 
     fclose(ptrIndice);
-    return true;
+    return registros;
 }
 
 bool indice_reescrita(char *indice, VETREGISTROI *regs) {
@@ -214,6 +231,16 @@ bool indice_destruir(VETREGISTROI *registros) {
 
 
 // Por enquanto ela serve apenas para debugar...
+void imprimeVetRegistroi(VETREGISTROI *vet) {
+    printf("Registros lidos: %d\n", vet->nReg);
+    printf("Espaço alocado: %d\n\n", vet->espacoMax);
+
+    for(int i = 0; i < vet->nReg; i++) {
+        printf("%d: %lld\n", vet->vet[i].id, vet->vet[i].byteOffset);
+    }
+    printf("\n\n");
+}
+
 void imprimeIndice(char *indice) {
     FILE *arquivo;
     REGISTROI reg;

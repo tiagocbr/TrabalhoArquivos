@@ -715,7 +715,7 @@ bool reader_create_index(char *binario, char *indice) {
 
     // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
     fclose(arquivo);
-    res = indice_reescrita(indice, registrosi, tamanho);
+    res = indice_criar(indice, registrosi, tamanho);
     if(res)
         binarioNaTela(indice);
 

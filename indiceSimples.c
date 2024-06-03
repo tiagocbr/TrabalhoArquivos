@@ -1,5 +1,11 @@
 #include "indiceSimples.h"
 
+struct vetRegistroi {
+        REGISTROI *vet;
+        int nReg;
+        int espacoMax;
+    };
+
 REGISTROI indice_criar_registro(int id, long long offset) {
     REGISTROI novoReg;
 
@@ -8,10 +14,50 @@ REGISTROI indice_criar_registro(int id, long long offset) {
     return novoReg;
 }
 
-// Função auxiliar que verifica se um arquivo está concistente pelo seu status
+VETREGISTROI *indice_criar_vetor(int tamanho) {
+    VETREGISTROI *novoVetor;
+
+    // Alocando memória para o tipo VETREGISTROI
+    novoVetor = (VETREGISTROI *) malloc(sizeof(VETREGISTROI));
+    if(novoVetor == NULL)
+        return NULL;
+    
+    // Alocando memória para o vetor de registrosi interno
+    novoVetor->vet = (REGISTROI *) malloc(tamanho * sizeof(REGISTROI));
+    if (novoVetor->vet == NULL) {
+        free(novoVetor);
+        return NULL;
+    }
+    novoVetor->espacoMax = tamanho;
+    novoVetor->nReg = 0;
+
+    return novoVetor;
+}
+
+bool indice_criar(char *indice, REGISTROI *registros, int tamanho) {
+    if(registros == NULL)
+        return false;
+
+    bool res;
+    VETREGISTROI *vetRegistros;
+    
+    // Alocando memória para o vetor de registros e inicializando seus campos
+    vetRegistros = (VETREGISTROI *) malloc(sizeof(VETREGISTROI));
+    if(vetRegistros == NULL)
+        return false;
+    vetRegistros->vet = registros;
+    vetRegistros->nReg = tamanho;
+    vetRegistros->espacoMax = tamanho;
+
+    // Chamando reescrita com vetRegistros para criar o arquivo de índices
+    res = indice_reescrita(indice, vetRegistros);
+    return res;
+}
+
+// Função auxiliar que verifica se um arquivo está consistente pelo seu status
 // Como ela checa se o ponteiro é nulo, as funções que a usam logo depois de fopen
 // Não precisam desse verificação.
-bool concistente(FILE *ptrArquivo) {
+bool consistente(FILE *ptrArquivo) {
     if(ptrArquivo != NULL) {
         char status;
         fread(&status, sizeof(char), 1, ptrArquivo);
@@ -22,17 +68,17 @@ bool concistente(FILE *ptrArquivo) {
     return false;
 }
 
-int indice_buscar(REGISTROI *registros, int idBuscado, int tamanho) {
-    if(registros != NULL && tamanho > 0) {
-        int meio = (tamanho - 1) / 2;   // índice para percorrer o vetor com busca binária
-        int ini = 0;                    // Guarda o índice inicial da partição buscada a cada iteração
-        int fim = tamanho - 1;          // Guarda o fim da partição buscada a cada iteração
+int indice_buscar(VETREGISTROI *registros, int idBuscado) {
+    if(registros->vet != NULL && registros->nReg > 0) {
+        int meio = (registros->nReg - 1) / 2;   // índice para percorrer o vetor com busca binária
+        int ini = 0;                            // Guarda o índice inicial da partição buscada a cada iteração
+        int fim = registros->nReg - 1;          // Guarda o fim da partição buscada a cada iteração
 
         // Loop da busca binária
         while(ini <= fim) {
-            if(registros[meio].id == idBuscado)
+            if(registros->vet[meio].id == idBuscado)
                 return meio;
-            else if(registros[meio].id > idBuscado)
+            else if(registros->vet[meio].id > idBuscado)
                 fim = meio - 1;
             else
                 ini = meio + 1;
@@ -43,22 +89,30 @@ int indice_buscar(REGISTROI *registros, int idBuscado, int tamanho) {
     return -1;
 }
 
-bool indice_inserir(REGISTROI *registros, REGISTROI novo, int nReg, int *espacoMax) {
-    if(registros != NULL) {
+bool indice_inserir(VETREGISTROI *registros, REGISTROI novo) {
+    if(registros->vet != NULL) {
         // Realocando mais 20 posições na memória, caso necessário
-        if(nReg == *espacoMax) {
-            registros = (REGISTROI *) realloc(registros, ((20 + nReg) * sizeof(REGISTROI)));
-            *espacoMax += 20; 
+        if(registros->nReg == registros->espacoMax) {
+            registros->vet = (REGISTROI *) realloc(registros->vet, (2 * registros->nReg * sizeof(REGISTROI)));
+            registros->espacoMax *= 2; 
         }
 
         // Buscando, deslocando e inserindo o novo registro ordenadamente
-        for(int i = 0; i < nReg; i++) {
-            if(registros[i].id > novo.id) {
-                for(int atual = nReg; atual >= i; atual--) {
-                    registros[atual] = registros[atual - 1];
+        for(int i = 0; i < registros->nReg; i++) {
+            if(registros->vet[i].id > novo.id) {
+                // Caso a posição do novo registro, esteja ocupada por um removido, basta trocá-lo
+                if(registros->vet[i].byteOffset == -1) {
+                    registros->vet[i] = novo;
+                    return true;    
                 }
 
-                registros[i] = novo;
+                // Caso contrátio, teremos que deslocar os registros para a direita
+                for(int atual = registros->nReg; atual >= i; atual--) {
+                    registros->vet[atual] = registros->vet[atual - 1];
+                }
+
+                registros->vet[i] = novo;
+                registros->nReg++;
                 return true;
             }
         }
@@ -66,61 +120,62 @@ bool indice_inserir(REGISTROI *registros, REGISTROI novo, int nReg, int *espacoM
     return false;
 }
 
-bool indice_remover(REGISTROI *registros, int idBuscado, int tamanho) {
-    if(registros != NULL && tamanho > 0) {
+bool indice_remover(VETREGISTROI *registros, int idBuscado) {
+    if(registros->vet != NULL && registros->nReg > 0) {
         int pos;    // Variável que armazenará o índice do elemento a ser removido no vetor de registros
 
-        // Buscando e deslocando os elementos do vetor para remover o buscado
-        pos = indice_buscar(registros, idBuscado, tamanho);
-        while(pos != tamanho - 1) {
-            registros[pos] = registros[pos + 1];
-            pos++;
-        }
+        // Buscando e removendo o item buscado
+        // Para removê-lo, marcamos como -1 no byteoffset do registro, o que é usado para verificar se ele
+        // está removido ou não em outras funções como reescrita e busca.
+        pos = indice_buscar(registros, idBuscado);
+        if(pos != -1)
+            registros->vet[pos].byteOffset = -1;
 
-        // Como o loop termina em tamanho - 1, precisamos dessa linha para o último elemento não ficar
-        // Duplicado. -1 é o valor nulo para id
-        registros[pos].id = -1;
         return true;
     }
     return false;
 }
 
-REGISTROI *indice_carregamento(char *indice, char *binario) {
-    FILE *ptrIndice, *ptrBinario; // Ponteiros para os arquivos
-    REGISTROI *registros;         // Vetor de registrosi a ser retornado
-    int tamanho;                  // Tamanho do vetor de registros
+VETREGISTROI *indice_carregamento(char *indice, char *binario) {
+    FILE *ptrIndice, *ptrBinario;   // Ponteiros para os arquivos
+    VETREGISTROI *registros;        // Vetor de registrosi a ser retornado
 
-    // Abrindo o arquivo de índice e verificando se ele está concistente.
+    // Abrindo o arquivo de índice e verificando se ele está consistente.
     ptrIndice = fopen(indice, "rb");
-    if(!concistente(ptrIndice))
+    if(!consistente(ptrIndice))
         return NULL;
 
     // Abrindo o arquivo de dados para obter o número de registros
     ptrBinario = fopen(binario, "rb");
-    if(!concistente(ptrBinario))
+    if(!consistente(ptrBinario))
         return NULL;
     
     fseek(ptrBinario, 17, SEEK_SET);
-    fread(&tamanho, sizeof(int), 1, ptrBinario);
+    fread(&registros->espacoMax, sizeof(int), 1, ptrBinario);
+    registros->espacoMax = registros->nReg;
     fclose(ptrBinario);
 
     // Alocando memória e passando os valores do arquivo para o vetor
-    registros = (REGISTROI *) malloc(tamanho * sizeof(REGISTROI));
-    if(registros == NULL)
+    registros->vet = (REGISTROI *) malloc(registros->espacoMax * sizeof(REGISTROI));
+    if(registros->vet == NULL)
         return NULL;
     
-    for(int i = 0; i < tamanho; i++) {
-        fread(&registros[i].id, sizeof(int), 1, ptrIndice);
-        fread(&registros[i].byteOffset, sizeof(long long), 1, ptrIndice);
+    for(int i = 0; i < registros->nReg; i++) {
+        fread(&registros->vet[i].id, sizeof(int), 1, ptrIndice);
+        fread(&registros->vet[i].byteOffset, sizeof(long long), 1, ptrIndice);
     }
 
     fclose(ptrIndice);
     return registros;
 }
 
-bool indice_reescrita(char *indice, REGISTROI *regs, int nRegs) {
+bool indice_reescrita(char *indice, VETREGISTROI *regs) {
     char cabecalho = '0';   // Variável que guarda o valor do registro de cabeçalho
     FILE *arquivo;          // Ponteiro para o arquivo de índices
+
+    // Verificando se o vetor de registros foi devidamente criado
+    if(regs == NULL)
+        return false;
 
     // Abrindo o arquivo de índices para escrita
     arquivo = fopen(indice, "wb");
@@ -129,12 +184,14 @@ bool indice_reescrita(char *indice, REGISTROI *regs, int nRegs) {
 
     // Reescrevendo o status e os registros
     fwrite(&cabecalho, sizeof(char), 1, arquivo);
-    for(int i = 0; i < nRegs; i++) {
-        fwrite(&regs[i].id, sizeof(int), 1, arquivo);
-        fwrite(&regs[i].byteOffset, sizeof(long long), 1, arquivo);
+    for(int i = 0; i < regs->nReg; i++) {
+        if(regs->vet[i].byteOffset != -1) {
+            fwrite(&regs->vet[i].id, sizeof(int), 1, arquivo);
+            fwrite(&regs->vet[i].byteOffset, sizeof(long long), 1, arquivo);
+        }
     }
 
-    // Se o loop terminou, podemos colocar o status do arquivo como concistente.
+    // Se o loop terminou, podemos colocar o status do arquivo como consistente.
     cabecalho = '1';
     fseek(arquivo, 0, SEEK_SET);
     fwrite(&cabecalho, sizeof(char), 1, arquivo);
@@ -143,10 +200,13 @@ bool indice_reescrita(char *indice, REGISTROI *regs, int nRegs) {
     return true;   
 }
 
-bool indice_destruir(REGISTROI *registros) {
+bool indice_destruir(VETREGISTROI *registros) {
     if(registros == NULL)
         return false;
 
+    free(registros->vet);
+    registros->vet = NULL;
+    
     free(registros);
     registros = NULL;
     return true;

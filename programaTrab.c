@@ -39,7 +39,7 @@ int main() {
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
             break;
-        /*case 5:
+        case 5:
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
@@ -50,7 +50,7 @@ int main() {
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
-            break;*/
+            break;
     }
 
     if(!res)

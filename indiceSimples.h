@@ -52,24 +52,3 @@
     bool indice_destruir(VETREGISTROI *registros);
 
 #endif
-
-/*
-Pq não criar direto aqui:
-PROBLEMA 1:
-reader.c deve abrigar a interface de todas as funcionalidades, logo chamaremos 4 dele
-Para criar aqui, teriamos que passar o vetor do regDados para ca, mas para lê-lo prcisariamos de le_registro_binario
-Isso faria ela aparecer no reader.h, quebrando a lógica de usar reader como interface
-Além disso, se quisermos que indice seja independente do binario, precisamos faze-lo ficar independete de regDados
-Por fim, create_index precisaria de um vetregistroi para usar reescrita, mas o problmea 2 dificulta a criação dele la:
-
-PROBLEMA 2:
-Se VETREGADADOS em teoria deveria funcionar como um tad, para nenhuma força externa alterar espacoMax ou nREgs
-Além disso, a cada realoc em carregamento e inserção precisamos verificar se o novo vetor não é nulo, mas isso
-não há valor nulo para vetregistroi, pois ele não é um ponteiro, e não podemos fazer carregamento ser bool sem passar por referencia
-
-ideia: indice_criar recebe o tamanho e o vetor de registroi de reader.c, mantendo a interface
-Ela cria um VETREGISTROI e o usa para chamar a reescrita do arquivo binário, fazendo o indice.c ficar quase independente do reader.c
-Depois a funcionalidade só precisa se preocupara em verificar o que ela retornar e desalocar tudo.
-
-Sinceramente, as vezes eu desgosto do fato da parte de implementação dessa diciplina ser tão jogada...
-*/

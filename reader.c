@@ -609,41 +609,6 @@ void quickSort(REGISTROI *vet, int ini, int fim) {
     }
     return;
 }
-//quick sort em vetor de inteiros
-int quickSortParticao_int(int *vet, int ini, int fim) {
-    int j = ini;    // Índice da próxima posição a ser trocada no quick sort
-    int pivo = vet[fim];
-    int aux;
-
-
-    for(int i = ini; i < fim; i++) {
-        if(vet[i] < pivo) {
-            // Trocando o elemento de i com j
-            aux = vet[i];
-            vet[i] = vet[j];
-            vet[j] = aux;
-
-            j++;
-        }
-    }
-
-    // Realizando a troca no pivo
-    vet[fim] = vet[j];
-    vet[j] = pivo;
-    return j;
-}
-
-void quickSort_int(int *vet, int ini, int fim) {
-    if(ini < fim) {
-        // Ordenando a partição atual.
-        int pivot = quickSortParticao_int(vet, ini, fim);
-
-        // Chamadas recursivas para as partições
-        quickSort_int(vet, ini, pivot - 1);
-        quickSort_int(vet, pivot + 1, fim);
-    }
-    return;
-}
 //quick sort em vetor de OT
 int quickSortParticao_ot(OT *vet, int ini, int fim) {
     int j = ini;    // Índice da próxima posição a ser trocada no quick sort
@@ -733,23 +698,8 @@ bool reader_create_index(char *binario, char *indice) {
     registrosi = NULL;
     return res;
 }
-
-bool busca_binaria(int id,int ini,int fim,REGISTROI* arr,long long *offset_removido){
-    while(ini<=fim){
-        int meio = (ini+fim)/2;
-        if(arr[meio].id==id){
-            *offset_removido = arr[meio].byteOffset;
-            return true;
-        }
-        else if(arr[meio].id<id)ini=meio+1;
-        else fim = meio-1;
-    }
-    return false;
-  
-}
-
 //guarda o offset e o id dos registros encontrados e marca como removidos
-int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_regs,int ini,int *procurado){
+int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int ini,int *procurado,VETREGISTROI* vetor_indices){
     int id = registro_buscado.id;
     int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
@@ -768,10 +718,13 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
     int qntdBuscas = 0;
     for(int j = 0; j < n_registros+n_removidos; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
-        if(r.removido == '1')continue;
+        if(r.removido == '1'){
+            libera_registro(r);
+            continue;
+        }
         bool ok = true;
-        offset_registro_removido = offset_prox_registro;
-        offset_prox_registro+=r.tamanhoRegistro;
+        offset_registro_removido = ftell(arquivo)-r.tamanhoRegistro;
+        offset_prox_registro=ftell(arquivo);
         for(int k = 1; k <= 5; k++) {
             if(procurado[k] == 0) continue;
             switch(k) {
@@ -797,8 +750,8 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
             }
         }
         if(ok && r.removido == '0') {
-            regs[ini + qntdBuscas].offsetReg = ftell(arquivo) - r.tamanhoRegistro; //offset para atualizar a lista depois
-            id_regs[ini + qntdBuscas] = r.id; //id para atualizar o registros de indices depois
+            regs[ini + qntdBuscas].offsetReg = offset_registro_removido; //offset para atualizar a lista depois
+            indice_remover(vetor_indices, r.id); //remove do vetor de indices
             regs[ini+qntdBuscas].tamanhoReg = r.tamanhoRegistro; //tamanho para atualizar a lista de removidos de maneira mais otimizada
             qntdBuscas += 1;
             //marcando o arquivo como removido
@@ -819,8 +772,8 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
 
 bool reader_delete_where(char *binario,char *indice,int n){
     //traz o arquivo de indices para a ram
-    REGISTROI *vetor_indices;
-    if(!indice_carregamento(indice, binario,vetor_indices))
+    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices==NULL)
        return 0;
     FILE* arquivo = fopen(binario,"rb+");
     int n_registros;
@@ -844,7 +797,6 @@ bool reader_delete_where(char *binario,char *indice,int n){
     int busca_total=0;
 
     OT *regs= (OT*) malloc(sizeof(OT)*n_registros);
-    int *id_regs = (int*)malloc(sizeof(int)*n_registros);
     for(int i = 0; i < n; i++){
         int params;
         scanf("%d",&params);
@@ -888,13 +840,13 @@ bool reader_delete_where(char *binario,char *indice,int n){
         }
     
         if(procurado[1]==0){
-            //busca no arquivo principal e guarda os offsets ,o id e o tamanho dos registros encontrados,além de os marcarem como removidos no arquivo principal
-            //o id sera usado para atualizar o arquivo de indices e o offset/tamanho para atualizar a lista de removidos
+            //busca no arquivo principal e guarda os offsets e o tamanho dos registros encontrados,além de os marcarem como removidos no arquivo principal
+            //o offset/tamanho para atualizar a lista de removidos
             //guardamos os arquivos removidos em RAM pois isso ira diminuir a complexidade de atualizar a lista de removidos ao final
             //pois cada atualização da lista de removidos seria feita em até o(n )
             //no entanto se guardarmos todos os removidos e ordenálos por ordem de tamanho para inserir na lista, a inserção de todos sera em complexidade o(n )
             // O que é mais eficiente do que o(n ) para cada.
-            int busca_atual = busca_para_remover(arquivo,registro_buscado,regs,id_regs,busca_total,procurado);
+            int busca_atual = busca_para_remover(arquivo,registro_buscado,regs,busca_total,procurado,vetor_indices);
             busca_total+=busca_atual;
         }
         else{
@@ -913,9 +865,9 @@ bool reader_delete_where(char *binario,char *indice,int n){
                 fwrite(&removido,sizeof(char),1,arquivo);
                 int tamanho_reg_rem;
                 fread(&tamanho_reg_rem,sizeof(int),1,arquivo);
-                //adiciona no regs para atualizar a lista de removidos e o arquivo de indices epois
+                //adiciona no regs para atualizar a lista de removidos depois
                 regs[busca_total].offsetReg = offset_removido;
-                id_regs[busca_total] = id;
+                indice_remover(vetor_indices, id);
                 regs[busca_total].tamanhoReg = tamanho_reg_rem;
                 busca_total+=1;
             }
@@ -924,24 +876,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
         //dando free nos campos do registro buscado
         libera_registro(registro_buscado);
     }
-    //removendo no arquivo principal os registros encontrados nas buscas
-
-    //Fazendo um novo vetor para colocar no arquivo de indices
-    REGISTROI *vetor_apos_remocao = (REGISTROI *) malloc (sizeof(REGISTROI)*(n_registros-busca_total));
-    int ponteiro_vetor_apos_remocao=0;
-    int ponteiro_regs=0;
-    //quick sort no vetor id_regs
-    quickSort_int(id_regs, 0, busca_total-1);
-    for(int i=0;i<n_registros;i++){
-        REGISTROI u = vetor_indices[i];
-        if(ponteiro_regs<busca_total)
-            if(u.id == id_regs[ponteiro_regs]){
-                ponteiro_regs++;
-                continue;
-            }
-        vetor_apos_remocao[ponteiro_vetor_apos_remocao] = u;
-        ponteiro_vetor_apos_remocao++;
-    }
+    
     //reescrever o arquivo de indices a partir do vetor vetor_apos_remocao
     indice_reescrita(indice, vetor_apos_remocao,n_registros-busca_total);
     //quick sort em regs
@@ -951,7 +886,6 @@ bool reader_delete_where(char *binario,char *indice,int n){
 
     //liberando memoria
     free(regs);
-    free(id_regs);
     free(vetor_indices);
     free(vetor_apos_remocao);
 
@@ -1007,6 +941,7 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
     return reaproveitados;
 }
 bool reader_insert_into(char *binario,char *indice,int n){
+    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
     FILE* arquivo = fopen(binario,"rb+");
     char status;
     fread(&status,sizeof(char),1,arquivo);
@@ -1016,13 +951,11 @@ bool reader_insert_into(char *binario,char *indice,int n){
     status='0';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
-    REGISTROI *vetor_indices;
-    if(!indice_carregamento(indice, binario,vetor_indices))return false;
-    int reaproveitados=0;
     fseek(arquivo,17,SEEK_SET);
     int n_reg;
     fread(&n_reg,sizeof(int),1,arquivo);
     int espacoMax = n_reg;
+    int reaproveitados=0;
     for(int i=0;i<n;i++){
         REGISTRO r;
         scanf("%d %d",&r.id,&r.idade);
@@ -1045,7 +978,7 @@ bool reader_insert_into(char *binario,char *indice,int n){
         REGISTROI x;
         x.byteOffset = byte;
         x.id = r.id;
-        indice_inserir(vetor_indices, x, n_reg+i, &espacoMax);
+        indice_inserir(vetor_indices, x);
         libera_registro(r);
     }
     //atualizando  o n_registros e o n_registros removidos do arquivo

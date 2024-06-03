@@ -16,11 +16,6 @@ struct registro{
     int tamNomeClube;
     char *nomeClube;     //campo 5
 };
-typedef struct offset_tamanho OT;
-struct offset_tamanho{
-    int tamanhoReg;
-    long long offsetReg;
-};
 // Função auxiliar que percorre o csv para descobrir o seu número total de registros
 int get_numero_registros(FILE* arquivo){
     char aux;
@@ -258,13 +253,14 @@ bool reader_create_table(char* csv,char* binario) {
 // registro
 REGISTRO ler_registro_binario(FILE *arquivo){
     REGISTRO r;     // Variável que armazena e retorna o registro lido
-
+    long long ini = ftell(arquivo);
     // Lendo os campos fixos do registro
     fread(&r.removido, sizeof(char), 1, arquivo);
     fread(&r.tamanhoRegistro, sizeof(int), 1, arquivo);
     fread(&r.prox, sizeof(long long), 1, arquivo);
     fread(&r.id, sizeof(int), 1, arquivo);
     fread(&r.idade, sizeof(int), 1, arquivo);
+    long long prox = ini+r.tamanhoRegistro;
 
     // Pulando os campos variáveis caso o registro esteja lógicamente removido
     if(0) {
@@ -317,6 +313,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
             }
         }
     }
+    fseek(arquivo,prox,SEEK_SET);
     return r;
 }
 
@@ -329,7 +326,7 @@ bool reader_select_from(char *binario) {
     arquivo = fopen(binario, "rb");
     if(arquivo == NULL) {return false;}
 
-    // Verificando se o arquivo está concistnte
+    // Verificando se o arquivo está consistente
     fread(&status, sizeof(char), 1, arquivo);
      if(status == '0')
         return false;
@@ -337,97 +334,24 @@ bool reader_select_from(char *binario) {
      // Salvando o nroRegArq do cabeçalho em tamanho
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
+    int tam_rem;
+    fread(&tam_rem,sizeof(int),1,arquivo);
+    int tot=tam_rem+tamanho;
     
     // Lendo e imprimindo todos os registros do arquivo, se houver
-    if(tamanho == 0 || status == '0') {
+    if(tamanho == 0) {
         printf("Registro inexistente.\n\n");
     }
     else {
-        fseek(arquivo, 4, SEEK_CUR);
-
-        while(1) {
+        while(tot--) {
             r = ler_registro_binario(arquivo);
-            if(!feof(arquivo)) {
-                imprime_registro(r);
-                libera_registro(r);
-            }
-            else {
-                break;
-            }
+            imprime_registro(r);
+            libera_registro(r);
         }
-
-        libera_registro(r);
     }
 
     fclose(arquivo);
     return true;
-}
-
-
-//função que atualiza a lista de removidos e cabeçalho com base no vetor regs que precisa estar ordenado em ordem crescente de tamanho
-//essa ordenação diminuirá a complexidade de atualizar a lista ao final de todas as remoções
-void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
-    //SETANDO AS VARIAVEIS
-    int ponteiro_regs=0;
-    long long offset_topo = 1;
-    //atualizando o numero de registros no cabecalho
-    fseek(arquivo,17,SEEK_SET);
-    int nRegArq;
-    fread(&nRegArq,sizeof(int),1,arquivo);
-    nRegArq-=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nRegArq,sizeof(int),1,arquivo);
-    //atualiza o numero de registros removidos no cabecalho
-    int nroRegRem=0;
-    fread(&nroRegRem,sizeof(int),1,arquivo);
-    nroRegRem+=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nroRegRem,sizeof(int),1,arquivo);
-    //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
-    fseek(arquivo,offset_topo,SEEK_SET);
-    long long prox;
-    fread(&prox,sizeof(long long),1,arquivo);
-    long long offset_anterior = offset_topo;
-    while(ponteiro_regs<qntd){
-        //offset e tamanho do registro que quero inserir na lista de removidos
-        long long offset_registro_removido = regs[ponteiro_regs].offsetReg;
-        int tamanhoRegistro = regs[ponteiro_regs].tamanhoReg;
-        if(prox==-1){ //se estiver no final da lista
-            //coloca o elemento atual para apontar para o registro que quero inserir na lista de removidos
-            fseek(arquivo,-8,SEEK_CUR);
-            fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
-            //coloca o proximo da lista como -1,pois sera inserida no final
-            fseek(arquivo,offset_registro_removido+5,SEEK_SET);
-            prox =-1;
-            fwrite(&prox,sizeof(long long),1,arquivo);
-
-            ponteiro_regs++;
-            offset_anterior = offset_registro_removido+5;
-        }
-        else{
-            //pula para o proximo elemento
-            fseek(arquivo,prox+1,SEEK_SET);
-            int tamanho_registro_atual=-1;
-            long long offset_elemento_atual_da_lista = ftell(arquivo) - 1;
-            fread(&tamanho_registro_atual,sizeof(int),1,arquivo);
-            //se o proximo elemento tiver tamanho maior do que o que eu quero inserir
-            if(tamanho_registro_atual>=tamanhoRegistro){
-                //coloca o elemento removido para apontar para o registro atual
-                //na proxima iteração o prox será igual a esse elemento novamente
-                prox = offset_elemento_atual_da_lista;
-                fseek(arquivo,offset_registro_removido+5,SEEK_SET);
-                fwrite(&prox,sizeof(long long),1,arquivo);
-                //coloca o elemento anterior para apontar para o registro removido
-                fseek(arquivo,offset_anterior,SEEK_SET);
-                fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
-                ponteiro_regs++;
-                offset_anterior = offset_registro_removido+5;
-            }
-            else{
-                fread(&prox,sizeof(long long),1,arquivo);
-            }  
-        } 
-    }    
 }
 
 
@@ -615,41 +539,7 @@ void quickSort(REGISTROI *vet, int ini, int fim) {
     }
     return;
 }
-//quick sort em vetor de OT
-int quickSortParticao_ot(OT *vet, int ini, int fim) {
-    int j = ini;    // Índice da próxima posição a ser trocada no quick sort
-    OT pivo = vet[fim];
-    OT aux;
 
-
-    for(int i = ini; i < fim; i++) {
-        if(vet[i].tamanhoReg < pivo.tamanhoReg) {
-            // Trocando o elemento de i com j
-            aux = vet[i];
-            vet[i] = vet[j];
-            vet[j] = aux;
-
-            j++;
-        }
-    }
-
-    // Realizando a troca no pivo
-    vet[fim] = vet[j];
-    vet[j] = pivo;
-    return j;
-}
-
-void quickSort_ot(OT *vet, int ini, int fim) {
-    if(ini < fim) {
-        // Ordenando a partição atual.
-        int pivot = quickSortParticao_ot(vet, ini, fim);
-
-        // Chamadas recursivas para as partições
-        quickSort_ot(vet, ini, pivot - 1);
-        quickSort_ot(vet, pivot + 1, fim);
-    }
-    return;
-}
 
 bool reader_create_index(char *binario, char *indice) {
     FILE *arquivo;             // Ponteiro para acessar os arquivos
@@ -674,13 +564,14 @@ bool reader_create_index(char *binario, char *indice) {
     // Criando o vetor de registros do índice com o número de registros do arquivo
     fseek(arquivo, 17, SEEK_SET);
     fread(&tamanho, sizeof(int), 1, arquivo);
+    int tam_rem;
+    fread(&tam_rem,sizeof(int),1,arquivo);
     registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * tamanho);
     if(registrosi == NULL)
         return false;
-
+    int tot = tam_rem+tamanho;
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
-    fseek(arquivo, 4, SEEK_CUR);
-    while(!feof(arquivo)) {
+    while(tot--) {
         regDados = ler_registro_binario(arquivo);
 
         if((regDados.removido != '1') && !feof(arquivo)) {
@@ -704,8 +595,51 @@ bool reader_create_index(char *binario, char *indice) {
     registrosi = NULL;
     return res;
 }
-//guarda o offset e o id dos registros encontrados e marca como removidos
-int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int ini,int *procurado,VETREGISTROI* vetor_indices){
+//função que atualiza a lista de removidos e cabeçalho com base no vetor regs que precisa estar ordenado em ordem crescente de tamanho
+//essa ordenação diminuirá a complexidade de atualizar a lista ao final de todas as remoções
+void atualiza_lista(FILE* arquivo,long long offset_registro_removido,int tamanhoRegistro){
+    long long offset_topo = 1;
+    //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
+    fseek(arquivo,offset_topo,SEEK_SET);
+    long long prox;
+    fread(&prox,sizeof(long long),1,arquivo);
+    long long offset_anterior = offset_topo;
+    while(1){
+        if(prox==-1){ //se estiver no final da lista
+            //coloca o elemento atual para apontar para o registro que quero inserir na lista de removidos
+            fseek(arquivo,-8,SEEK_CUR);
+            fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+            //coloca o proximo da lista como -1,pois sera inserida no final
+            fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+            prox=-1;
+            fwrite(&prox,sizeof(long long),1,arquivo);
+            break;
+        }
+        else{
+            //pula para o proximo elemento
+            fseek(arquivo,prox+1,SEEK_SET);
+            long long atual=prox; //agora o ponteiro esta em prox
+            int tamanho_registro_atual=-1;
+            fread(&tamanho_registro_atual,sizeof(int),1,arquivo);
+            //se o proximo elemento tiver tamanho maior do que o que eu quero inserir
+            if(tamanho_registro_atual>=tamanhoRegistro){
+                //coloca o elemento removido para apontar para o registro atual
+                fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+                fwrite(&atual,sizeof(long long),1,arquivo);
+                //coloca o elemento anterior para apontar para o registro removido
+                fseek(arquivo,offset_anterior,SEEK_SET);
+                fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+                break;
+            }
+            else{
+                offset_anterior = atual+5;
+                fread(&prox,sizeof(long long),1,arquivo);
+            }  
+        } 
+    }    
+}
+//busca e remove os arquivos
+int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VETREGISTROI* vetor_indices){
     int id = registro_buscado.id;
     int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
@@ -756,14 +690,19 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int ini,
             }
         }
         if(ok && r.removido == '0') {
-            regs[ini + qntdBuscas].offsetReg = offset_registro_removido; //offset para atualizar a lista depois
+
             indice_remover(vetor_indices, r.id); //remove do vetor de indices
-            regs[ini+qntdBuscas].tamanhoReg = r.tamanhoRegistro; //tamanho para atualizar a lista de removidos de maneira mais otimizada
-            qntdBuscas += 1;
-            //marcando o arquivo como removido
+
+            //marcando o registro como removido no arquivo principal
             fseek(arquivo,offset_registro_removido,SEEK_SET);
             char remov='1';
             fwrite(&remov,sizeof(char),1,arquivo);
+
+            //atualiza a lista de registros removidos
+            atualiza_lista(arquivo,offset_registro_removido,r.tamanhoRegistro); 
+            qntdBuscas += 1;
+            
+            //voltando o ponteiro para continuar as buscas
             fseek(arquivo,offset_prox_registro,SEEK_SET);
             libera_registro(r);
         }
@@ -802,7 +741,6 @@ bool reader_delete_where(char *binario,char *indice,int n){
     char campo[20];
     int busca_total=0;
 
-    OT *regs= (OT*) malloc(sizeof(OT)*n_registros);
     for(int i = 0; i < n; i++){
         int params;
         scanf("%d",&params);
@@ -846,13 +784,8 @@ bool reader_delete_where(char *binario,char *indice,int n){
         }
     
         if(procurado[1]==0){
-            //busca no arquivo principal e guarda os offsets e o tamanho dos registros encontrados,além de os marcarem como removidos no arquivo principal
-            //o offset/tamanho para atualizar a lista de removidos
-            //guardamos os arquivos removidos em RAM pois isso ira diminuir a complexidade de atualizar a lista de removidos ao final
-            //pois cada atualização da lista de removidos seria feita em até o(n )
-            //no entanto se guardarmos todos os removidos e ordenálos por ordem de tamanho para inserir na lista, a inserção de todos sera em complexidade o(n )
-            // O que é mais eficiente do que o(n ) para cada.
-            int busca_atual = busca_para_remover(arquivo,registro_buscado,regs,busca_total,procurado,vetor_indices);
+            //busca no arquivo principal e remove
+            int busca_atual = busca_para_remover(arquivo,registro_buscado,procurado,vetor_indices);
             busca_total+=busca_atual;
         }
         else{
@@ -864,7 +797,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
             REGISTROI x;
             if(ok!=-1)x = indice_get_registroi_vetor(vetor_indices, ok);
             offset_removido = x.byteOffset;
-            if(ok!=-1){ //marca o registro como removido no arquivo principal e guarda o id/offset/tamanho
+            if(ok!=-1){ // remove o registro
                 fseek(arquivo,offset_removido,SEEK_SET);
                 char removido;
                 fread(&removido,sizeof(char),1,arquivo);
@@ -874,10 +807,12 @@ bool reader_delete_where(char *binario,char *indice,int n){
                 fwrite(&removido,sizeof(char),1,arquivo);
                 int tamanho_reg_rem;
                 fread(&tamanho_reg_rem,sizeof(int),1,arquivo);
-                //adiciona no regs para atualizar a lista de removidos depois
-                regs[busca_total].offsetReg = offset_removido;
+
+                //atualiza a lista de registros removidos
+                atualiza_lista(arquivo,offset_removido,tamanho_reg_rem);
+    
                 indice_remover(vetor_indices, id); //remove do vetor_indices
-                regs[busca_total].tamanhoReg = tamanho_reg_rem;
+
                 busca_total+=1;
             }
         }
@@ -885,16 +820,20 @@ bool reader_delete_where(char *binario,char *indice,int n){
         //dando free nos campos do registro buscado
         libera_registro(registro_buscado);
     }
+    //reescrever o cabecaçalho com o novo n_registros e n_reg_rem
+    fseek(arquivo,17,SEEK_SET);
+    int nreg;
+    fread(&nreg,sizeof(int),1,arquivo);
+    nreg-=busca_total;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&nreg,sizeof(int),1,arquivo);
+    fread(&nreg,sizeof(int),1,arquivo);
+    nreg+=busca_total;
+    fseek(arquivo,-4,SEEK_CUR);
+    fwrite(&nreg,sizeof(int),1,arquivo);
     
-    //reescrever o arquivo de indices a partir do vetor vetor_apos_remocao
+    //reescrever o arquivo de indices a partir do novo vetor
     indice_reescrita(indice, vetor_indices);
-    //quick sort em regs
-    quickSort_ot(regs,0,busca_total-1);
-    //reorganizar a lista de removidos a partir do vetor regs ordenado e atualiza o nRegRem e Nreg do cabecalho
-    atualiza_lista(arquivo,regs,busca_total);
-
-    //liberando memoria
-    free(regs);
     indice_destruir(vetor_indices);
     //fechando arquivo
     fseek(arquivo,0,SEEK_SET);

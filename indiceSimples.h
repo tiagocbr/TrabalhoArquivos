@@ -48,6 +48,7 @@
 
     // Desaloca o vetor de registros na memória principal
     bool indice_destruir(VETREGISTROI *registros);
+    REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos);
 
 
     void imprimeIndice(char *indice);

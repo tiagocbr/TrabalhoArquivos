@@ -34,5 +34,7 @@
 
     bool reader_insert_into(char* binario,char* indice,int n); 
 
+    void print_lista_removidos(char* binario);
+
 
 #endif

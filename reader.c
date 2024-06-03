@@ -74,10 +74,16 @@ void imprime_registro(REGISTRO r) {
     }
 
     // Imprimindo todos os registros não logicamente removidos
-    if(r.removido == '0') {
+    if(1) {
         printf("Nome do Jogador: %s\n", r.nomeJogador);
         printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        printf("Clube do Jogador: %s\n\n", r.nomeClube);
+        printf("Clube do Jogador: %s\n", r.nomeClube);
+        printf("Removido: %c\n", r.removido);
+        printf("id: %d\n", r.id);
+        printf("prox: %lld\n", r.prox);
+        printf("Idade: %d\n", r.idade);
+        printf("Tamanho: %d\n\n",r.tamanhoRegistro);
+        
     }
 }
 
@@ -261,7 +267,7 @@ REGISTRO ler_registro_binario(FILE *arquivo){
     fread(&r.idade, sizeof(int), 1, arquivo);
 
     // Pulando os campos variáveis caso o registro esteja lógicamente removido
-    if(r.removido == '1') {
+    if(0) {
         fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
         fseek(arquivo, r.tamNomeJog, SEEK_CUR);
         fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
@@ -854,8 +860,11 @@ bool reader_delete_where(char *binario,char *indice,int n){
             long long offset_removido;
             //faz a busca binaria no vetor_indices e guarda o resultado em offset_removido
             //analogo a busca_para_remover so que usando o arquivo de indices
-            bool ok = busca_binaria(id,0,n_registros-1,vetor_indices,&offset_removido);
-            if(ok){ //marca o registro como removido no arquivo principal e guarda o id/offset/tamanho
+            int ok = indice_buscar(vetor_indices,id);
+            REGISTROI x;
+            if(ok!=-1)x = indice_get_registroi_vetor(vetor_indices, ok);
+            offset_removido = x.byteOffset;
+            if(ok!=-1){ //marca o registro como removido no arquivo principal e guarda o id/offset/tamanho
                 fseek(arquivo,offset_removido,SEEK_SET);
                 char removido;
                 fread(&removido,sizeof(char),1,arquivo);
@@ -867,7 +876,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
                 fread(&tamanho_reg_rem,sizeof(int),1,arquivo);
                 //adiciona no regs para atualizar a lista de removidos depois
                 regs[busca_total].offsetReg = offset_removido;
-                indice_remover(vetor_indices, id);
+                indice_remover(vetor_indices, id); //remove do vetor_indices
                 regs[busca_total].tamanhoReg = tamanho_reg_rem;
                 busca_total+=1;
             }
@@ -878,7 +887,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
     }
     
     //reescrever o arquivo de indices a partir do vetor vetor_apos_remocao
-    indice_reescrita(indice, vetor_apos_remocao,n_registros-busca_total);
+    indice_reescrita(indice, vetor_indices);
     //quick sort em regs
     quickSort_ot(regs,0,busca_total-1);
     //reorganizar a lista de removidos a partir do vetor regs ordenado e atualiza o nRegRem e Nreg do cabecalho
@@ -886,15 +895,14 @@ bool reader_delete_where(char *binario,char *indice,int n){
 
     //liberando memoria
     free(regs);
-    free(vetor_indices);
-    free(vetor_apos_remocao);
-
-
+    indice_destruir(vetor_indices);
     //fechando arquivo
     fseek(arquivo,0,SEEK_SET);
     status='1';
     fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
+    binarioNaTela(binario);
+    binarioNaTela(indice);
     return true;
 }
 
@@ -1004,3 +1012,19 @@ bool reader_insert_into(char *binario,char *indice,int n){
     fclose(arquivo);
     return true;
 }*/
+
+
+void print_lista_removidos(char* binario){
+    FILE *arquivo = fopen(binario,"rb");
+    long long prox=1;
+    fseek(arquivo,1,SEEK_SET);
+    fread(&prox,sizeof(long long),1,arquivo);
+    while(1){
+        if(prox==-1)break;
+        fseek(arquivo,prox,SEEK_SET);
+        REGISTRO r = ler_registro_binario(arquivo);
+        imprime_registro(r);
+        prox=r.prox;
+        libera_registro(r);
+    }
+}

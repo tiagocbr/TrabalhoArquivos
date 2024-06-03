@@ -13,7 +13,7 @@ int main() {
     char arqEntrada[30];  // Armazena o nome do arquivo de entrada
     char arqSaida[30];    // Armazena o nome do arquivo de saída
     int n = 0;            // Usada para informar a qntd de buscas de algumas funcionalidades
-    bool res;             // Armzaena os resultados das funcionalidades booleanas
+    bool res=true;             // Armzaena os resultados das funcionalidades booleanas
     
     scanf("%d", &opCode);
     switch(opCode) {
@@ -39,26 +39,30 @@ int main() {
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
             break;
-        /*case 5:
+        case 5:
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
             res = reader_delete_where(arqEntrada,arqSaida,n);
-            break;*/
+            break;
         case 6:
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
-            res = reader_insert_into(arqEntrada,arqSaida,n);
+           // res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
 
         case 7:
-            {
             VETREGISTROI *vet = indice_carregamento("index.bin", "binario.bin");
             imprimeVetRegistroi(vet);
             imprimeIndice("index.bin");
             break;
-            }
+            
+        case 8:
+            scanf(" %s", arqEntrada);
+            print_lista_removidos(arqEntrada);
+
+
     }
 
     if(!res)

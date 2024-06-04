@@ -211,6 +211,7 @@ bool reader_create_table(char* csv,char* binario) {
     // Escrevendo o registro de cabeçalho no binário
     escreve_cabecalho(arquivo_bin, cabecalho);
 
+    long long proxOffset = 25;
     // Lendo no csv cada registro e armazenando-o no binário
     for(int registro_atual=0;registro_atual<n;registro_atual++){
         REGISTRO r;
@@ -222,19 +223,16 @@ bool reader_create_table(char* csv,char* binario) {
             ler_campo(arquivo,i,&r, cabecalho);
         }
         escreve_registro(arquivo_bin, &r);
-        //printf("%d %d %s %s %s\n",r.id,r.idade,r.nomeJogador,r.nacionalidade,r.nomeClube);
         libera_registro(r);
+        if(registro_atual == n-1)proxOffset = ftell(arquivo_bin);
     }
     fclose(arquivo);
 
-
-    
-
-    fseek(arquivo_bin, 0, SEEK_SET);
     cabecalho_set_status(cabecalho);
+    cabecalho_set_proxOffset(cabecalho,proxOffset);
     escreve_cabecalho(arquivo_bin,cabecalho);
-    fclose(arquivo_bin);
 
+    fclose(arquivo_bin);
 
     cabecalho_apagar(&cabecalho);
 
@@ -256,94 +254,70 @@ REGISTRO ler_registro_binario(FILE *arquivo){
     fread(&r.idade, sizeof(int), 1, arquivo);
     long long prox = ini+r.tamanhoRegistro;
 
-    // Pulando os campos variáveis caso o registro esteja lógicamente removido
-    if(r.removido == '1') {
-        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNomeJog, SEEK_CUR);
-        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNacionalidade, SEEK_CUR);
-        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNomeClube, SEEK_CUR);
-
-        r.nacionalidade = NULL;
+    // Lendo e alocando os campos variávies, quando necessário
+    fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+    if(r.tamNomeJog == 0)
         r.nomeJogador = NULL;
-        r.nomeClube = NULL;
-    }
     else {
-        // Lendo e alocando os campos variávies, quando necessário
-        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
-        if(r.tamNomeJog == 0)
-            r.nomeJogador = NULL;
-        else {
-            r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
+        r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
 
-            if(r.nomeJogador != NULL) {
-                fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
-                r.nomeJogador[r.tamNomeJog] = '\0';
-            }
-        }
-
-        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
-        if(r.tamNacionalidade == 0)
-            r.nacionalidade = NULL;
-        else {
-            r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
-
-            if(r.nacionalidade != NULL) {
-                fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
-                r.nacionalidade[r.tamNacionalidade] = '\0';
-            }
-        }
-
-        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
-        if(r.tamNomeClube == 0)
-            r.nomeClube = NULL;
-        else {
-            r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
-
-            if(r.nomeClube != NULL) {
-                fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
-                r.nomeClube[r.tamNomeClube] = '\0';
-            }
+        if(r.nomeJogador != NULL) {
+            fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
+            r.nomeJogador[r.tamNomeJog] = '\0';
         }
     }
+
+    fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
+    if(r.tamNacionalidade == 0)
+        r.nacionalidade = NULL;
+    else {
+        r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
+
+        if(r.nacionalidade != NULL) {
+            fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
+            r.nacionalidade[r.tamNacionalidade] = '\0';
+        }
+    }
+
+    fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
+    if(r.tamNomeClube == 0)
+        r.nomeClube = NULL;
+    else {
+        r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
+
+        if(r.nomeClube != NULL) {
+            fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
+            r.nomeClube[r.tamNomeClube] = '\0';
+        }
+    }
+    
     fseek(arquivo,prox,SEEK_SET);
     return r;
 }
 
 bool reader_select_from(char *binario) {
-    FILE *arquivo;      // Ponteiro para o arquivo informado
-    int tamanho;        // Armazena a quantidade de registros no arquivo binário
-    char status;        // Recebe o status do arquivo, para avaliar se este está concistente
-    REGISTRO r;
-
-    arquivo = fopen(binario, "rb");
-    if(arquivo == NULL) {return false;}
-
+    FILE *arquivo; = fopen(binario, "rb");
     // Verificando se o arquivo está consistente
-    fread(&status, sizeof(char), 1, arquivo);
-     if(status == '0')
+     if(!consistente(arquivo))
         return false;
 
-     // Salvando o nroRegArq do cabeçalho em tamanho
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&tamanho, sizeof(int), 1, arquivo);
-    int tam_rem;
-    fread(&tam_rem,sizeof(int),1,arquivo);
-    int tot=tam_rem+tamanho;
+    CABECALHO* cabecalho = cabecalho_from_arquivo(arquivo);
+
+    // Salvando o total de registros para iterar sobre o arquivo
+    int total=cabecalho_get_nroRegArq(cabecalho)+cabecalho_get_nroRegRem(cabecalho);
     
     // Lendo e imprimindo todos os registros do arquivo, se houver
-    if(tamanho == 0) {
+    if(cabecalho_get_nroRegArq(cabecalho) == 0) {
         printf("Registro inexistente.\n\n");
     }
     else {
-        while(tot--) {
+        while(total--) {
             r = ler_registro_binario(arquivo);
             imprime_registro(r);
             libera_registro(r);
         }
     }
-
+    cabecalho_apagar(&cabecalho);
     fclose(arquivo);
     return true;
 }
@@ -359,25 +333,16 @@ bool busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     bool id_encontrado=false;
     bool ok=false;
     // Salvando o numero de registros e registros removidos
-    int n_registros;
-    int n_removidos;
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-    fread(&n_removidos,sizeof(int),1,arquivo);
-    // Percorrendo o arquivo para a busca atual
-    fseek(arquivo,25,SEEK_SET);
-    long long offset_prox_registro = 25;
-    long long offset_registro_removido = -1;
-    int qntdBuscas = 0;
-    for(int j = 0; j < n_registros+n_removidos; j++) {
+    CABECALHO* cabecalho = cabecalho_from_arquivo(arquivo);
+    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+    cabecalho_apagar(&cabecalho);
+    for(int j = 0; j < total; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
         if(r.removido == '1'){
             libera_registro(r);
             continue;
         }
         bool ok = true;
-        offset_registro_removido = offset_prox_registro;
-        offset_prox_registro+=r.tamanhoRegistro;
         for(int k = 1; k <= 5; k++) {
             if(procurado[k] == 0) continue;
             switch(k) {
@@ -402,7 +367,7 @@ bool busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
                     break;
             }
         }
-        if(ok && r.removido == '0') {
+        if(ok) {
             imprime_registro(r);
             libera_registro(r);
             ok=true;
@@ -425,22 +390,12 @@ int get_tamanho_string(char *string){
 }
 
 bool reader_select_where(char * binario, int qntd) {
-    FILE *arquivo;          // Ponteiro para o arquivo binário
     char campo[30];         // Campo que o usuário digitará para a busca
     int procurado[6];       // vetor para controle dos campos o usuário está procurando
-    int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas
-    char status;            // Variável usada para verificar se o arquivo buscado está concistente
-    bool id_encontrado = 0; // Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
 
     // Abrindo e verificando a própria abertura do arquivo
-    arquivo = fopen(binario, "rb");
-    if(arquivo == NULL)
-        return false;
-
-    // Verificando se o arquivo está consistente
-    fread(&status, sizeof(char), 1, arquivo);
-     if(status == '0')
-        return false;
+    FILE *arquivo = fopen(binario, "rb");
+    if(!consistente(arquivo))return false;
 
 
     // Loop externo que executa a qntd de buscas informadas
@@ -489,8 +444,7 @@ bool reader_select_where(char * binario, int qntd) {
         //Buscando e printando
         printf("Busca %d\n\n", i + 1);
         //essa função busca e ja printa os registros encontrados,retornando false caso nenhum seja encontrado
-        if(busca_no_binario(arquivo,registro_buscado,procurado));
-        else printf("Registro inexistente.\n\n");
+        if(!busca_no_binario(arquivo,registro_buscado,procurado))printf("Registro inexistente.\n\n");
         libera_registro(registro_buscado);
     }
 
@@ -536,58 +490,39 @@ void quickSort(REGISTROI *vet, int ini, int fim) {
 
 
 bool reader_create_index(char *binario, char *indice) {
-    FILE *arquivo;             // Ponteiro para acessar os arquivos
-    REGISTRO regDados;         // Variável que armazena um registro de dados do índice
-    REGISTROI *registrosi;     // Vetor de registros do índice
-    char status;               // Variável auxiliar que recebe o status do binário, para avaliar a sua concistencia
-    int tamanho;               // Variável auxiliar que recebe o número de registros no binário original
     long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
-    bool res;                  // Recebe o resultado da função indice reescrita, para o retorno desta função
     int i = 0;                 // Index para o vetor de registrosi
 
     // Abrindo e verificando o arquivo binário para leitura
-    arquivo = fopen(binario, "rb");
-    if(arquivo == NULL)
-        return false;
-    
-    // Verficando se o binário aberto está concistente
-    fread(&status, sizeof(char), 1, arquivo);
-    if(status == '0')
-        return false;
+    FILE *arquivo = fopen(binario, "rb");
+    if(!consistente(arquivo))return false;
 
     // Criando o vetor de registros do índice com o número de registros do arquivo
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&tamanho, sizeof(int), 1, arquivo);
-    int tam_rem;
-    fread(&tam_rem,sizeof(int),1,arquivo);
-    registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * tamanho);
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo)
+    REGISTROI *registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * cabecalho_get_nroRegArq(cabecalho));
     if(registrosi == NULL)
         return false;
-    int tot = tam_rem+tamanho;
+    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
-    while(tot--) {
-        regDados = ler_registro_binario(arquivo);
-
-        imprime_registro(regDados);
-
+    while(total--) {
+        REGISTRO regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
-            printf("Aquiiiii\n\n");
             registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
             i++;
         }
-
         // Atualizando o offset para o próximo registro
         offsetReg += (long long) regDados.tamanhoRegistro;
     }
-    quickSort(registrosi, 0, tot - 1);
+    quickSort(registrosi, 0, cabecalho_get_nroRegArq(cabecalho) - 1);
 
     // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
     fclose(arquivo);
-    res = indice_criar(indice, registrosi, tamanho);
+    bool res = indice_criar(indice, registrosi, cabecalho_get_nroRegArq(cabecalho));
     if(res)
         binarioNaTela(indice);
 
     // Desalocando a memória e retorno da funcionalidade
+    cabecalho_apagar(&cabecalho);
     free(registrosi);
     registrosi = NULL;
     return res;
@@ -642,25 +577,22 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
     char* nomeJogador =  registro_buscado.nomeJogador;
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
-    int n_registros;
-    int n_removidos;
-    bool id_encontrado=false;
     // Salvando o numero de registros do arquivo na variavel n_registros
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-    fread(&n_removidos,sizeof(int),1,arquivo);
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+    cabecalho_apagar(&cabecalho);
     // Percorrendo o arquivo para a busca atual
     long long offset_prox_registro = 25;
-    long long offset_registro_removido = -1;
+    long long offset_registro_atual = -1;
     int qntdBuscas = 0;
-    for(int j = 0; j < n_registros+n_removidos; j++) {
+    for(int j = 0; j < total; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
         if(r.removido == '1'){
             libera_registro(r);
             continue;
         }
         bool ok = true;
-        offset_registro_removido = ftell(arquivo)-r.tamanhoRegistro;
+        offset_registro_atual = ftell(arquivo)-r.tamanhoRegistro;
         offset_prox_registro=ftell(arquivo);
         for(int k = 1; k <= 5; k++) {
             if(procurado[k] == 0) continue;
@@ -668,8 +600,6 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
                 case 1: 
                     if(id!=r.id) 
                         ok=false;
-                    else
-                        id_encontrado = true;
                     break;
                 case 2: 
                     if(idade!=r.idade)
@@ -686,17 +616,17 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
                     break;
             }
         }
-        if(ok && r.removido == '0') {
+        if(ok) { //remove o registro
 
             indice_remover(vetor_indices, r.id); //remove do vetor de indices
 
             //marcando o registro como removido no arquivo principal
-            fseek(arquivo,offset_registro_removido,SEEK_SET);
+            fseek(arquivo,offset_registro_atual,SEEK_SET);
             char remov='1';
             fwrite(&remov,sizeof(char),1,arquivo);
 
             //atualiza a lista de registros removidos
-            atualiza_lista(arquivo,offset_registro_removido,r.tamanhoRegistro); 
+            atualiza_lista(arquivo,offset_registro_atual,r.tamanhoRegistro); 
             qntdBuscas += 1;
             
             //voltando o ponteiro para continuar as buscas
@@ -705,9 +635,6 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
         }
         else 
             libera_registro(r);
-        if(id_encontrado) {
-            return qntdBuscas;     // Parando a busca caso o id tenha sido encontrado
-        }
     }
     return qntdBuscas;
 }
@@ -717,23 +644,13 @@ bool reader_delete_where(char *binario,char *indice,int n){
     VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
     if(vetor_indices==NULL)
        return 0;
+
     FILE* arquivo = fopen(binario,"rb+");
-    int n_registros;
-    //fazendo as verificações de status
-    char status;
-    fread(&status,sizeof(char),1,arquivo);
-    if(status=='0'){
-        return 0;
-    }
-    else{
-        fseek(arquivo,-1,SEEK_CUR);
-        status='0';
-        fwrite(&status,sizeof(char),1,arquivo);
-    }
-
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-
+    if(!consistente(arquivo))return 0;  
+    fseek(arquivo,0,SEEK_SET);
+    char status='0';
+    fwrite(&status,sizeof(char),1,arquivo);
+    
     int procurado[6];
     char campo[20];
     int busca_total=0;
@@ -787,14 +704,14 @@ bool reader_delete_where(char *binario,char *indice,int n){
         }
         else{
             int id=registro_buscado.id;
-            long long offset_removido;
+
             //faz a busca binaria no vetor_indices e guarda o resultado em offset_removido
-            //analogo a busca_para_remover so que usando o arquivo de indices
-            int ok = indice_buscar(vetor_indices,id);
+            int pos = indice_buscar(vetor_indices,id); //pos guarda a posição do registro no vetor de indices ou -1 caso nao tenha sido encontrado
             REGISTROI x;
-            if(ok!=-1)x = indice_get_registroi_vetor(vetor_indices, ok);
-            offset_removido = x.byteOffset;
-            if(ok!=-1){ // remove o registro
+            if(pos!=-1)x = indice_get_registroi_vetor(vetor_indices, pos); //Pega o registro na posição encontrada
+            long long offset_removido = x.byteOffset;
+
+            if(pos!=-1){ // remove o registro
                 fseek(arquivo,offset_removido,SEEK_SET);
                 char removido;
                 fread(&removido,sizeof(char),1,arquivo);
@@ -818,17 +735,11 @@ bool reader_delete_where(char *binario,char *indice,int n){
         libera_registro(registro_buscado);
     }
     //reescrever o cabecaçalho com o novo n_registros e n_reg_rem
-    fseek(arquivo,17,SEEK_SET);
-    int nreg;
-    fread(&nreg,sizeof(int),1,arquivo);
-    nreg-=busca_total;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nreg,sizeof(int),1,arquivo);
-    fread(&nreg,sizeof(int),1,arquivo);
-    nreg+=busca_total;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nreg,sizeof(int),1,arquivo);
-    
+    CABECALHO* cabecalho =  cabecalho_from_arquivo(arquivo);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)-busca_total);
+    cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)+busca_total);
+    escreve_cabecalho(arquivo,cabecalho);
+    cabecalho_apagar(&cabecalho);
     //reescrever o arquivo de indices a partir do novo vetor
     indice_reescrita(indice, vetor_indices);
     indice_destruir(vetor_indices);
@@ -894,7 +805,7 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
         }
     }
 
-    // Caso não haja nenhum removido reaproveitável, insira no fim
+    // Caso não haja nenhum removido reaproveitados,; insira no fim
     fseek(arquivo,0,SEEK_END);
     *byte = ftell(arquivo);
     escreve_registro(arquivo,reg);
@@ -916,16 +827,11 @@ bool reader_insert_into(char *binario,char *indice,int n){
     long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi    
 
     // Abrindo e verificando a consistência do arquivo binário principal
-    arquivo = fopen(binario, "rb+");
-    if(arquivo == NULL)
-        return false;
-    fread(&status, sizeof(char), 1, arquivo);
-    if(status == '0')
-        return false;
+    if(!consistente(arquivo))return false;
 
     // Setando o status para inconsistente como medida preventiva
     status = '0';
-    fseek(arquivo,-1,SEEK_CUR);
+    fseek(arquivo,0,SEEK_SET);
     fwrite(&status,sizeof(char),1,arquivo);
 
     // Carregando o registro de índices na memória
@@ -971,17 +877,11 @@ bool reader_insert_into(char *binario,char *indice,int n){
     }
 
     //atualizando  o n_registros e o n_registros_removidos do arquivo
-    int n_registros;
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-    n_registros+=n;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_registros,sizeof(int),1,arquivo);
-
-    fread(&n_registros,sizeof(int),1,arquivo);
-    n_registros-=reaproveitados;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_registros,sizeof(int),1,arquivo);
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+n);
+    cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)-reaproveitados);
+    escreve_cabecalho(arquivo,cabecalho);
+    cabecalho_apagar(&cabecalho);
 
     // Reescrevendo o arquivo de índices
     indice_reescrita(indice, vetor_indices);

@@ -61,7 +61,7 @@ bool cabecalho_set_status(CABECALHO *c) {
     return false;
 }
 
-bool cabecalho_set_topo(CABECALHO *c, int novoTopo) {
+bool cabecalho_set_topo(CABECALHO *c, long long novoTopo) {
     if(c != NULL) {
         c->topo = novoTopo;
         return true;
@@ -69,7 +69,7 @@ bool cabecalho_set_topo(CABECALHO *c, int novoTopo) {
     return false;
 }
 
-bool cabecalho_set_proxOffset(CABECALHO *c, int novoOffset) {
+bool cabecalho_set_proxOffset(CABECALHO *c, long long novoOffset) {
     if(c != NULL) {
         c->proxByteOffset = novoOffset;
         return true;
@@ -102,3 +102,21 @@ bool cabecalho_apagar(CABECALHO **c) {
     }
     return false;
 }
+
+CABECALHO* cabecalho_from_arquivo(FILE* arquivo){
+    CABECALHO *c =  cabecalho_criar();
+    char status;
+    long long topo;
+    long long proxByteOffset;
+    int nroRegArq;
+    int nroRegRem;
+    fseek(arquivo,0,SEEK_SET);
+    fread(&c->status,sizeof(char),1,arquivo);
+    fread(&c->topo,sizeof(long long),1,arquivo);
+    fread(&c->proxByteOffset,sizeof(long long),1,arquivo);
+    fread(&c->nroRegArq,sizeof(int),1,arquivo);
+    fread(&c->nroRegRem,sizeof(int),1,arquivo);
+    return c;
+}
+
+

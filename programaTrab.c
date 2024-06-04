@@ -38,6 +38,7 @@ int main() {
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
+            if(res)binarioNaTela(arqSaida);
             break;
         case 5:
             scanf(" %s", arqEntrada);

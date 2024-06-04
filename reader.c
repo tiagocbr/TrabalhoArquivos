@@ -421,8 +421,6 @@ bool reader_create_index(char *binario, char *indice) {
     // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
     fclose(arquivo);
     bool res = indice_criar(indice, registrosi, cabecalho_get_nroRegArq(cabecalho));
-    if(res)
-        binarioNaTela(indice);
 
     // Desalocando a memória e retorno da funcionalidade
     cabecalho_apagar(&cabecalho);
@@ -543,6 +541,7 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
 }
 
 bool reader_delete_where(char *binario,char *indice,int n){
+    reader_create_index(binario,indice);
     //traz o arquivo de indices para a ram
     VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
     if(vetor_indices==NULL)
@@ -734,7 +733,7 @@ bool reader_insert_into(char *binario,char *indice,int n){
     vetor_indices = indice_carregamento(indice, binario);
     if(vetor_indices == NULL)
         return false;
-    
+
     arquivo = fopen(binario,"rb+");
     // Abrindo e verificando a consistência do arquivo binário principal
     if(!consistente(arquivo))return false;

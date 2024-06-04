@@ -11,7 +11,7 @@
     // Cria um novo cabeçalho
     CABECALHO *cabecalho_criar(void); //com valores padrao
     CABECALHO* cabecalho_from_arquivo(FILE* arquivo); //com valores de acordo com um arquivo
-    
+
     // Conjunto de funções que retornam os valores dos campos de um cabeçalho
     char cabecalho_get_status(CABECALHO *c);
     long long cabecalho_get_topo(CABECALHO *c);
@@ -28,5 +28,6 @@
 
     // Apaga o cabeçalho, desalocando a memória usada.
     bool cabecalho_apagar(CABECALHO **c);
+    void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho);
 
 #endif

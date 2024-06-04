@@ -115,28 +115,6 @@ void ler_campo(FILE *arquivo,int campo,REGISTRO* registro, CABECALHO *cabecalho)
     }
 }
 
-// Função auxiliar que escreve no arquivo binário o registro de cabeçalho
-void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
-    fseek(arquivo, 0, SEEK_SET);
-
-    if (cabecalho != NULL) {
-        // Passando os dados do TAD para variáveis locais
-        char status=cabecalho_get_status(cabecalho);
-        long long topo =  cabecalho_get_topo(cabecalho);
-        long long proxByteOffset = cabecalho_get_proxOffset(cabecalho);
-        int nroRegArq = cabecalho_get_nroRegArq(cabecalho);
-        int nroRegRem = cabecalho_get_nroRegRem(cabecalho);
-
-        // Escrevendo o cabeçalho no arquivo
-        fwrite(&status, sizeof(char),1,arquivo);
-        fwrite(&topo, sizeof(long long),1,arquivo);
-        fwrite(&proxByteOffset, sizeof(long long),1,arquivo);
-        fwrite(&nroRegArq, sizeof(int),1,arquivo);
-        fwrite(&nroRegRem, sizeof(int),1,arquivo);
-    
-    }
-}
-
 void escreve_registro(FILE *arquivo, REGISTRO* registro) {
     // Escrevendo campos fixos
     fwrite(&registro->removido, sizeof(char), 1, arquivo);
@@ -751,6 +729,13 @@ bool reader_insert_into(char *binario,char *indice,int n){
     char strAux[4];              // Auxiliar para tratar registros com campos fixos com o valor NULO  
     long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi    
 
+
+    // Carregando o registro de índices na memória
+    vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)
+        return false;
+    
+    arquivo = fopen(binario,"rb+");
     // Abrindo e verificando a consistência do arquivo binário principal
     if(!consistente(arquivo))return false;
 
@@ -758,11 +743,6 @@ bool reader_insert_into(char *binario,char *indice,int n){
     status = '0';
     fseek(arquivo,0,SEEK_SET);
     fwrite(&status,sizeof(char),1,arquivo);
-
-    // Carregando o registro de índices na memória
-    vetor_indices = indice_carregamento(indice, binario);
-    if(vetor_indices == NULL)
-        return false;
 
     // Coletando os dados e inserindo nos binários n vezes
     for(int i=0;i<n;i++){

@@ -1,3 +1,4 @@
+#include "util.h"
 #include "indiceSimples.h"
 
 struct vetRegistroi {
@@ -12,18 +13,6 @@ REGISTROI indice_criar_registro(int id, long long offset) {
     novoReg.id = id;
     novoReg.byteOffset = offset;
     return novoReg;
-}
-
-REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos) {
-    if(vet != NULL && pos < vet->nReg) 
-        return vet->vet[pos];
-    
-    // Do contrário, retorna um REGISTROI com id indicando que é nulo (-1)
-    REGISTROI regNulo;
-    regNulo.id = -1;
-    regNulo.byteOffset = -1;
-    
-    return regNulo;
 }
 
 VETREGISTROI *indice_criar_vetor(int tamanho) {
@@ -46,6 +35,26 @@ VETREGISTROI *indice_criar_vetor(int tamanho) {
     return novoVetor;
 }
 
+int indice_get_nReg(VETREGISTROI *registros) {
+    return ((registros != NULL) ? registros->nReg : -1);
+}
+
+int indice_get_espacoMax(VETREGISTROI *registros) {
+    return ((registros != NULL) ? registros->espacoMax : -1);
+}
+
+REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos) {
+    if(vet != NULL && pos < vet->nReg) 
+        return vet->vet[pos];
+    
+    // Do contrário, retorna um REGISTROI com id indicando que é nulo (-1)
+    REGISTROI regNulo;
+    regNulo.id = -1;
+    regNulo.byteOffset = -1;
+    
+    return regNulo;
+}
+
 bool indice_criar(char *indice, REGISTROI *registros, int tamanho) {
     if(registros == NULL)
         return false;
@@ -64,19 +73,6 @@ bool indice_criar(char *indice, REGISTROI *registros, int tamanho) {
     // Chamando reescrita com vetRegistros para criar o arquivo de índices
     res = indice_reescrita(indice, vetRegistros);
     return res;
-}
-
-// Função auxiliar que verifica se um arquivo está consistente pelo seu status
-// Como ela checa se o ponteiro é nulo, as funções que a usam logo depois de fopen
-// Não precisam desse verificação.
-bool consistente(FILE *ptrArquivo) {
-    if(ptrArquivo != NULL) {
-        char status;
-        fread(&status, sizeof(char), 1, ptrArquivo);
-        if(status == '1')
-            return true;
-        }
-    return false;
 }
 
 int indice_buscar(VETREGISTROI *registros, int idBuscado) {
@@ -230,39 +226,4 @@ bool indice_destruir(VETREGISTROI *registros) {
     free(registros);
     registros = NULL;
     return true;
-}
-
-
-
-// Por enquanto ela serve apenas para debugar...
-void imprimeVetRegistroi(VETREGISTROI *vet) {
-    printf("Registros lidos: %d\n", vet->nReg);
-    printf("Espaço alocado: %d\n\n", vet->espacoMax);
-
-    for(int i = 0; i < vet->nReg; i++) {
-        printf("%d: %lld\n", vet->vet[i].id, vet->vet[i].byteOffset);
-    }
-    printf("\n\n");
-}
-
-void imprimeIndice(char *indice) {
-    FILE *arquivo;
-    REGISTROI reg;
-    char status;
-
-    arquivo = fopen(indice, "rb");
-    if(arquivo == NULL)
-        return;
-    
-    fread(&status, sizeof(char), 1, arquivo);
-    if(status == '0')
-        return;
-
-    while(!feof(arquivo)) {
-        fread(&reg.id, sizeof(int), 1, arquivo);
-        fread(&reg.byteOffset, sizeof(long long), 1, arquivo);
-
-        printf("%d: %lld\n", reg.id, reg.byteOffset);
-    }
-    printf("\n");
 }

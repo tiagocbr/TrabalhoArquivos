@@ -263,7 +263,8 @@ REGISTRO ler_registro_binario(FILE *arquivo){
 }
 
 bool reader_select_from(char *binario) {
-    FILE *arquivo; = fopen(binario, "rb");
+    REGISTRO r;
+    FILE *arquivo = fopen(binario, "rb");
     // Verificando se o arquivo está consistente
      if(!consistente(arquivo))
         return false;
@@ -404,7 +405,7 @@ bool reader_select_where(char * binario, int qntd) {
         //Buscando e printando
         printf("Busca %d\n\n", i + 1);
         //essa função busca e ja printa os registros encontrados,retornando false caso nenhum seja encontrado
-        if(!busca_no_binario(arquivo,registro_buscado,procurado))printf("Registro inexistente.\n\n");
+        if(!busca_no_arqDados(arquivo,registro_buscado,procurado))printf("Registro inexistente.\n\n");
         libera_registro(registro_buscado);
     }
 
@@ -422,7 +423,7 @@ bool reader_create_index(char *binario, char *indice) {
     if(!consistente(arquivo))return false;
 
     // Criando o vetor de registros do índice com o número de registros do arquivo
-    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo)
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
     REGISTROI *registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * cabecalho_get_nroRegArq(cabecalho));
     if(registrosi == NULL)
         return false;

@@ -29,5 +29,5 @@ eraseBin:
 debug7:
 	cp arquivos\ 2/Entrada/binario9.bin .
 
-clean: eraseBin debug7
+clean: debug7
 	rm *.o programaTrab

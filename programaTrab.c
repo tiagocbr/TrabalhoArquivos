@@ -39,12 +39,12 @@ int main() {
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
             break;
-        /*case 5:
+        case 5:
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
             res = reader_delete_where(arqEntrada,arqSaida,n);
-            break;*/
+            break;
         case 6:
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
@@ -52,13 +52,6 @@ int main() {
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
 
-        case 7:
-            {
-            VETREGISTROI *vet = indice_carregamento("index.bin", "binario.bin");
-            imprimeVetRegistroi(vet);
-            imprimeIndice("index.bin");
-            break;
-            }
     }
 
     if(!res)

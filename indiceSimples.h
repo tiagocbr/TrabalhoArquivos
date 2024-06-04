@@ -24,6 +24,11 @@
     // Função que cria um VETREGISTROI vazio a partir de um tamanho inicial
     VETREGISTROI *indice_criar_vetor(int tamanho);
 
+    //Conjunto de funções que retornam os valores de um VETREGISTROI
+    int indice_get_nReg(VETREGISTROI *registros);
+    int indice_get_espacoMax(VETREGISTROI *registros);
+    REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos);
+
 
     // FUNÇÕES PARA MANIPULAR O VETOR DO ÍNDICE SIMPLES NA MEMÓRIA
     // Cria o arquivo binário de índices a partir de um vetor de registrosi fornecido pelo arquivo principal
@@ -48,10 +53,5 @@
 
     // Desaloca o vetor de registros na memória principal
     bool indice_destruir(VETREGISTROI *registros);
-    REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos);
-
-
-    void imprimeIndice(char *indice);
-    void imprimeVetRegistroi(VETREGISTROI *vet);
 
 #endif

@@ -49,20 +49,8 @@ int main() {
             scanf(" %s", arqEntrada);
             scanf(" %s",arqSaida);
             scanf(" %d",&n);
-           // res = reader_insert_into(arqEntrada,arqSaida,n);
+            res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
-
-        case 7:
-            VETREGISTROI *vet = indice_carregamento("index.bin", "binario.bin");
-            imprimeVetRegistroi(vet);
-            imprimeIndice("index.bin");
-            break;
-            
-        case 8:
-            scanf(" %s", arqEntrada);
-            print_lista_removidos(arqEntrada);
-
-
     }
 
     if(!res)

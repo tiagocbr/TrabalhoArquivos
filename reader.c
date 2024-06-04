@@ -1,3 +1,4 @@
+#include "util.h"
 #include "reader.h"
 #include "regCabecalho.h"
 #include "funcoes_fornecidas.h"
@@ -16,42 +17,6 @@ struct registro{
     int tamNomeClube;
     char *nomeClube;     //campo 5
 };
-// Função auxiliar que percorre o csv para descobrir o seu número total de registros
-int get_numero_registros(FILE* arquivo){
-    char aux;
-    int n=0;
-
-    while(fscanf(arquivo,"%c",&aux)!=EOF){
-        if(aux==',')n++;
-    }
-    n=n/4;
-    fseek(arquivo,45,SEEK_SET);
-    //Alteração para o Fseek funcionar em windows e linux
-    char c;
-    fread(&c,sizeof(char),1,arquivo);
-    if(c!='\n')fseek(arquivo,-1,SEEK_SET);
-    return n-1;
-}
-
-// Função auxiliar que pega uma string lida no csv e a converte em inteiro
-// (Usada para armazenar os campos id e idade)
-int strToInt(char *str, int tam) {
-    if(tam == 0)
-        return -1;
-
-    if(str != NULL) {
-        int n = 0;
-        int casaDec = 1;
-
-        for(int i = tam-1; i>=0; i--) {
-            n += (str[i]-'0') * casaDec;
-            casaDec *= 10;
-        }
-
-        return n;
-    }
-    return -1;
-}
 
 // Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
 // registro, lê e imprime seus valores
@@ -152,6 +117,8 @@ void ler_campo(FILE *arquivo,int campo,REGISTRO* registro, CABECALHO *cabecalho)
 
 // Função auxiliar que escreve no arquivo binário o registro de cabeçalho
 void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
+    fseek(arquivo, 0, SEEK_SET);
+
     if (cabecalho != NULL) {
         // Passando os dados do TAD para variáveis locais
         char status=cabecalho_get_status(cabecalho);
@@ -226,9 +193,6 @@ bool reader_create_table(char* csv,char* binario) {
         libera_registro(r);
     }
     fclose(arquivo);
-
-
-    
 
     fseek(arquivo_bin, 0, SEEK_SET);
     cabecalho_set_status(cabecalho);
@@ -350,7 +314,7 @@ bool reader_select_from(char *binario) {
 
 
 //função que realiza as buscas no arquivo principal e printa
-bool busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
+bool busca_no_arqDados(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     int id = registro_buscado.id;
     int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
@@ -415,13 +379,6 @@ bool busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     }
     return ok;
     
-}
-int get_tamanho_string(char *string){
-    int ct=0;
-    while(string[ct]!='\0'){
-        ct++;
-    }
-    return ct;
 }
 
 bool reader_select_where(char * binario, int qntd) {
@@ -489,49 +446,13 @@ bool reader_select_where(char * binario, int qntd) {
         //Buscando e printando
         printf("Busca %d\n\n", i + 1);
         //essa função busca e ja printa os registros encontrados,retornando false caso nenhum seja encontrado
-        if(busca_no_binario(arquivo,registro_buscado,procurado));
+        if(busca_no_arqDados(arquivo,registro_buscado,procurado));
         else printf("Registro inexistente.\n\n");
         libera_registro(registro_buscado);
     }
 
     fclose(arquivo);
     return true;
-}
-
-//Quick sort em vetor de registro de indices
-int quickSortParticao(REGISTROI *vet, int ini, int fim) {
-    int j = ini;    // Índice da próxima posição a ser trocada no quick sort
-    REGISTROI pivo = vet[fim];
-    REGISTROI aux;
-
-
-    for(int i = ini; i < fim; i++) {
-        if(vet[i].id < pivo.id) {
-            // Trocando o elemento de i com j
-            aux = vet[i];
-            vet[i] = vet[j];
-            vet[j] = aux;
-
-            j++;
-        }
-    }
-
-    // Realizando a troca no pivo
-    vet[fim] = vet[j];
-    vet[j] = pivo;
-    return j;
-}
-
-void quickSort(REGISTROI *vet, int ini, int fim) {
-    if(ini < fim) {
-        // Ordenando a partição atual.
-        int pivot = quickSortParticao(vet, ini, fim);
-
-        // Chamadas recursivas para as partições
-        quickSort(vet, ini, pivot - 1);
-        quickSort(vet, pivot + 1, fim);
-    }
-    return;
 }
 
 
@@ -997,20 +918,4 @@ bool reader_insert_into(char *binario,char *indice,int n){
     binarioNaTela(indice);
 
     return true;
-}
-
-
-void print_lista_removidos(char* binario){
-    FILE *arquivo = fopen(binario,"rb");
-    long long prox=1;
-    fseek(arquivo,1,SEEK_SET);
-    fread(&prox,sizeof(long long),1,arquivo);
-    while(1){
-        if(prox==-1)break;
-        fseek(arquivo,prox,SEEK_SET);
-        REGISTRO r = ler_registro_binario(arquivo);
-        imprime_registro(r);
-        prox=r.prox;
-        libera_registro(r);
-    }
 }

@@ -32,6 +32,10 @@
     // Esta funcionalidade será repetida n vezes
     bool reader_delete_where(char *binario ,char *indices,int n);
 
+    // Funcionalidade 6
+    // Insere novos registros no arquivo principal e no arquivo de índices
+    // A inserção usa a estratégia best fit, buscando reaproveitar registros lógicamente
+    // removidos no arquivo principal
     bool reader_insert_into(char* binario,char* indice,int n); 
 
     void print_lista_removidos(char* binario);

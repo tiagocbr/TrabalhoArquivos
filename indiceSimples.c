@@ -102,14 +102,16 @@ int indice_buscar(VETREGISTROI *registros, int idBuscado) {
 
 bool indice_inserir(VETREGISTROI *registros, REGISTROI novo) {
     if(registros->vet != NULL) {
-        // Realocando mais 20 posições na memória, caso necessário
+        // Realocando mais posições na memória, caso necessário
         if(registros->nReg == registros->espacoMax) {
             registros->vet = (REGISTROI *) realloc(registros->vet, (2 * registros->nReg * sizeof(REGISTROI)));
             registros->espacoMax *= 2; 
         }
 
+        int i; // Variável que indexará o veteor de registrosi
+
         // Buscando, deslocando e inserindo o novo registro ordenadamente
-        for(int i = 0; i < registros->nReg; i++) {
+        for(i = 0; i < registros->nReg; i++) {
             if(registros->vet[i].id > novo.id) {
                 // Caso a posição do novo registro, esteja ocupada por um removido, basta trocá-lo
                 if(registros->vet[i].byteOffset == -1) {
@@ -121,12 +123,14 @@ bool indice_inserir(VETREGISTROI *registros, REGISTROI novo) {
                 for(int atual = registros->nReg; atual >= i; atual--) {
                     registros->vet[atual] = registros->vet[atual - 1];
                 }
-
-                registros->vet[i] = novo;
-                registros->nReg++;
-                return true;
+                break;
             }
         }
+
+        // Inserção para os casos de deslocamento e de o registro ser inserido no final
+        registros->vet[i] = novo;
+        registros->nReg++;
+        return true;   
     }
     return false;
 }

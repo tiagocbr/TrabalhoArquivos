@@ -20,8 +20,11 @@ funcoes_fornecidas.o: funcoes_fornecidas.c funcoes_fornecidas.h
 regCabecalho.o: regCabecalho.c regCabecalho.h
 	gcc -c regCabecalho.c -o regCabecalho.o
 
-debug7:
-	rm binario7.bin indice7.bin; cp arquivos\ 2/Entrada/binario7.bin .
+eraseBin:
+	rm *.bin
 
-clean:
-	rm *.o programaTrab binario.bin *.bin
+debug7:
+	cp arquivos\ 2/Entrada/binario9.bin .
+
+clean: eraseBin debug7
+	rm *.o programaTrab

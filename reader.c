@@ -568,7 +568,10 @@ bool reader_create_index(char *binario, char *indice) {
     while(tot--) {
         regDados = ler_registro_binario(arquivo);
 
-        if((regDados.removido != '1') && !feof(arquivo)) {
+        imprime_registro(regDados);
+
+        if(regDados.removido != '1') {
+            printf("Aquiiiii\n\n");
             registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
             i++;
         }
@@ -576,7 +579,7 @@ bool reader_create_index(char *binario, char *indice) {
         // Atualizando o offset para o próximo registro
         offsetReg += (long long) regDados.tamanhoRegistro;
     }
-    quickSort(registrosi, 0, tamanho - 1);
+    quickSort(registrosi, 0, tot - 1);
 
     // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
     fclose(arquivo);
@@ -842,67 +845,106 @@ bool reader_delete_where(char *binario,char *indice,int n){
 //insere o registro no arquivo principal e guarda o byte onde foi inserudo
 //retorna 1 se o arquivo foi cololocado em espaço de registro logicamente removido
 //retorna 0 caso contrario
-/*int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
-    int reaproveitados=0;
-    fseek(arquivo,1,SEEK_SET);
-    long long prox;
-    fread(&prox,sizeof(long long),1,arquivo);
-    long long offset_anterior = 1;
-    while(1){
-        if(prox==-1){//inserir no final do arquivo;
-            fseek(arquivo,0,SEEK_END);
+int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
+    int reaproveitados = 0;    // controla a qntd de registros reaproveitados pela estratégia best fit
+    long long proxRemovido;    // Topo da lista de registros lógicamente removidos
+    long long offset_anterior; // Ponteiro para o registro removido anterior na lista de removidos
+    long long proxOffsetLivre; // Próximo offset disponível para inserção ao fim do arquivo
+    int tamanho;               // Guarda o tamanho disponível em registros removidos
+    int guardar_tamanho;    // Auxiliar para guardar o tamanho original de um registro inserido com best fit
+
+    // Lendo, do binário, topo e o próximo byteoffest disponível
+    fseek(arquivo, 1, SEEK_SET);
+    fread(&proxRemovido, sizeof(long long), 1, arquivo);
+    fread(&proxOffsetLivre, sizeof(long long), 1, arquivo);
+    offset_anterior = 1;
+
+    // Percorrendo a lista de registros removidos para tentar realizar a estratégia
+    // best fit
+    while(proxRemovido != -1){
+        // obtendo o tamanho do removido atual e atualizando o ponteiro para o
+        // próximo
+        fseek(arquivo, proxRemovido+1, SEEK_SET);
+        fread(&tamanho, sizeof(int), 1, arquivo);
+        fread(&proxRemovido, sizeof(long long), 1, arquivo);
+
+        // se o tamanho couber o arquivo a ser inserido, então insira e retorne
+        if(tamanho >= reg->tamanhoRegistro){
+            reaproveitados = 1;
+
+            fseek(arquivo,-13,SEEK_CUR);
+            int guardar_tamanho = reg->tamanhoRegistro;
+            reg->tamanhoRegistro = tamanho;
             *byte = ftell(arquivo);
             escreve_registro(arquivo,reg);
-            break;
+            char lixo = '$';
+
+            for(int i = 0; i < tamanho - guardar_tamanho; i++) {
+                fwrite(&lixo, sizeof(char), 1, arquivo);
+            }
+            //coloca o anterior para apontar para o proximo
+            fseek(arquivo,offset_anterior,SEEK_SET);
+            fwrite(&proxRemovido,sizeof(long long),1,arquivo);
+            return reaproveitados;
         }
-        else{ //pula pro proximo e compara com o tamanho de reg
-            fseek(arquivo,prox+1,SEEK_SET);
-            int tamanho;
-            fread(&tamanho,sizeof(int),1,arquivo);
-            fread(&prox,sizeof(long long),1,arquivo);
-            if(tamanho>=reg->tamanhoRegistro){ // se o tamanho couber o arquivo a ser inserido,entao insere
-                reaproveitados=1;
-                fseek(arquivo,-13,SEEK_CUR);
-                int guardar_tamanho = reg->tamanhoRegistro;
-                reg->tamanhoRegistro = tamanho;
-                *byte = ftell(arquivo);
-                escreve_registro(arquivo,reg);
-                char lixo = '$';
-                fwrite(&lixo,sizeof(char),tamanho-guardar_tamanho,arquivo);
-                //coloca o anterior para apontar para o proximo
-                fseek(arquivo,offset_anterior,SEEK_SET);
-                fwrite(&prox,sizeof(long long),1,arquivo);
-                break;
-            }
-            else{ //caso contrario continua o loop e guarda o offset;
-                offset_anterior = ftell(arquivo) - 8;
-            }
+
+        //caso contrario continue o loop e guarde o offset;
+        else{
+            offset_anterior = ftell(arquivo) - 8;
         }
     }
+
+    // Caso não haja nenhum removido reaproveitável, insira no fim
+    fseek(arquivo,0,SEEK_END);
+    *byte = ftell(arquivo);
+    escreve_registro(arquivo,reg);
+
+    // Atualizando o próximo byteoffset
+    proxOffsetLivre += reg->tamanhoRegistro;
+    fseek(arquivo, 9, SEEK_SET);
+    fwrite(&proxOffsetLivre, sizeof(long long), 1, arquivo);
     return reaproveitados;
 }
+
 bool reader_insert_into(char *binario,char *indice,int n){
-    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
-    FILE* arquivo = fopen(binario,"rb+");
-    char status;
-    fread(&status,sizeof(char),1,arquivo);
-    if(status=='0'){
+    FILE* arquivo;               // Ponteiro para os arquivos
+    char status;                 // Variável para armazenar o status, usada em verificações
+    VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
+    int reaproveitados = 0;      // Controla a qntd de registros reaproveitados pela estratégia best fit
+    REGISTRO r;                  // Guarda os novos registros a serem inseridos
+    char strAux[4];              // Auxiliar para tratar registros com campos fixos com o valor NULO  
+    long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi    
+
+    // Abrindo e verificando a consistência do arquivo binário principal
+    arquivo = fopen(binario, "rb+");
+    if(arquivo == NULL)
         return false;
-    }
-    status='0';
+    fread(&status, sizeof(char), 1, arquivo);
+    if(status == '0')
+        return false;
+
+    // Setando o status para inconsistente como medida preventiva
+    status = '0';
     fseek(arquivo,-1,SEEK_CUR);
     fwrite(&status,sizeof(char),1,arquivo);
-    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
-    if(vetor_indices == NULL)return false;
-    int reaproveitados=0;
-    fseek(arquivo,17,SEEK_SET);
-    int n_reg;
-    fread(&n_reg,sizeof(int),1,arquivo);
-    int espacoMax = n_reg;
-    int reaproveitados=0;
+
+    // Carregando o registro de índices na memória
+    vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)
+        return false;
+
+    // Coletando os dados e inserindo nos binários n vezes
     for(int i=0;i<n;i++){
-        REGISTRO r;
-        scanf("%d %d",&r.id,&r.idade);
+
+        // Lendo os campos fixos
+        scanf("%d", &r.id);
+        scan_quote_string(strAux);
+        if(strcmp(strAux, "") == 0)
+            r.idade = -1;
+        else
+            r.idade = strToInt(strAux, 2);
+
+        // Lendo os campos de tamanho variável
         r.nomeJogador = (char*) malloc (sizeof(char)*100);
         r.nacionalidade = (char*) malloc(sizeof(char)*100);
         r.nomeClube = (char*) malloc(sizeof(char)*100);
@@ -915,36 +957,47 @@ bool reader_insert_into(char *binario,char *indice,int n){
         r.tamNacionalidade = get_tamanho_string(r.nacionalidade);
         r.tamNomeClube = get_tamanho_string(r.nomeClube);
         r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
-        //insere no arquivo principal e guarda o byte q foi inserido
+
+        // inserindo no arquivo principal e guardando o byte que foi inserido
         long long byte;
-        reaproveitados+=inserir_arquivo_principal(arquivo,&r,&byte);
-        //insere no vetor de indices
+        reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
+
+        //inserindo no vetor de índices
         REGISTROI x;
         x.byteOffset = byte;
         x.id = r.id;
         indice_inserir(vetor_indices, x);
         libera_registro(r);
     }
-    //atualizando  o n_registros e o n_registros removidos do arquivo
+
+    //atualizando  o n_registros e o n_registros_removidos do arquivo
     int n_registros;
     fseek(arquivo, 17, SEEK_SET);
     fread(&n_registros, sizeof(int), 1, arquivo);
     n_registros+=n;
     fseek(arquivo,-4,SEEK_CUR);
     fwrite(&n_registros,sizeof(int),1,arquivo);
+
     fread(&n_registros,sizeof(int),1,arquivo);
     n_registros-=reaproveitados;
     fseek(arquivo,-4,SEEK_CUR);
     fwrite(&n_registros,sizeof(int),1,arquivo);
 
-    //inserir_no_arquivo_de_inices
+    // Reescrevendo o arquivo de índices
     indice_reescrita(indice, vetor_indices);
+
+    // Voltando o status para 1
     status='1';
-    fseek(arquivo,-1,SEEK_CUR);
+    fseek(arquivo,0,SEEK_SET);
     fwrite(&status,sizeof(char),1,arquivo);
     fclose(arquivo);
+
+    // Chamando binario na tela para os arquivos
+    binarioNaTela(binario);
+    binarioNaTela(indice);
+
     return true;
-}*/
+}
 
 
 void print_lista_removidos(char* binario){

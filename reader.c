@@ -563,9 +563,9 @@ bool reader_delete_where(char *binario,char *indice,int n){
     if(!consistente(arquivo))return 0;  
     set_status_arquivo(arquivo, '0');
     
-    int procurado[6];
-    char campo[20];
-    int busca_total=0;
+    int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
+    char campo[20]; //variavel que vai receber o camp obuscado 
+    int busca_total=0;  //variavel para saber o numero de registros deletados
 
     for(int i = 0; i < n; i++){
         int params;

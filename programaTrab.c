@@ -7,6 +7,7 @@ Tiago Chaves Bezerra Rocha       - 14609637
 #include <stdio.h>
 #include "reader.h"
 #include "indiceSimples.h"
+#include "funcoes_fornecidas.h"
 
 int main() {
     int opCode;           // armazena a funcionalidade escolhida pelo usuário
@@ -14,7 +15,7 @@ int main() {
     char arqSaida[30];    // Armazena o nome do arquivo de saída
     int n = 0;            // Usada para informar a qntd de buscas de algumas funcionalidades
     bool res=true;             // Armzaena os resultados das funcionalidades booleanas
-    
+
     scanf("%d", &opCode);
     switch(opCode) {
         case 1:
@@ -38,6 +39,9 @@ int main() {
             scanf(" %s", arqEntrada);
             scanf(" %s", arqSaida);
             res = reader_create_index(arqEntrada, arqSaida);
+
+            if(res)
+                binarioNaTela(arqSaida);
             break;
         case 5:
             scanf(" %s", arqEntrada);
@@ -51,6 +55,14 @@ int main() {
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
+
+        case 665:
+            {
+                int *vet = (int *) malloc(5 * sizeof(int));
+                free(vet);
+                vet = NULL;
+            break;
+            }
     }
 
     if(!res)

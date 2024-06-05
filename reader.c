@@ -83,6 +83,11 @@ void ler_campo(FILE *arquivo,int campo,REGISTRO* registro, CABECALHO *cabecalho)
         }
     }
 
+    if(i == 0) {
+        free(valor);
+        valor = NULL;
+    }
+
     // Escolhendo o campo correto da struct para o valor lido
     switch(campo){
         case 1: 
@@ -391,45 +396,47 @@ bool reader_select_where(char * binario, int qntd) {
     return true;
 }
 
-
 bool reader_create_index(char *binario, char *indice) {
     long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
+    REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
+    REGISTROI *registrosi;     // Vetor para temporariamente armazenar os registros de índice 
+    int total;                 // Guarda o número total de registros no arquivo de dados
     int i = 0;                 // Index para o vetor de registrosi
 
     // Abrindo e verificando o arquivo binário para leitura
     FILE *arquivo = fopen(binario, "rb");
-    if(!consistente(arquivo))return false;
+    if(!consistente(arquivo)) return false;
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
 
     // Criando o vetor de registros do índice com o número de registros do arquivo
-    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
-    REGISTROI *registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * cabecalho_get_nroRegArq(cabecalho));
+    registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * cabecalho_get_nroRegArq(cabecalho));
     if(registrosi == NULL)
         return false;
-    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+    total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
     while(total--) {
-        REGISTRO regDados = ler_registro_binario(arquivo);
+        regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
             registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
             i++;
         }
+
         // Atualizando o offset para o próximo registro
         offsetReg += (long long) regDados.tamanhoRegistro;
+        libera_registro(regDados);
     }
     quickSort(registrosi, 0, cabecalho_get_nroRegArq(cabecalho) - 1);
 
     // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
     fclose(arquivo);
     bool res = indice_criar(indice, registrosi, cabecalho_get_nroRegArq(cabecalho));
-    if(res)
-        binarioNaTela(indice);
 
     // Desalocando a memória e retorno da funcionalidade
     cabecalho_apagar(&cabecalho);
-    free(registrosi);
-    registrosi = NULL;
     return res;
 }
+
 //função que atualiza a lista de removidos e cabeçalho com base no vetor regs que precisa estar ordenado em ordem crescente de tamanho
 //essa ordenação diminuirá a complexidade de atualizar a lista ao final de todas as remoções
 void atualiza_lista(FILE* arquivo,long long offset_registro_removido,int tamanhoRegistro){
@@ -473,6 +480,7 @@ void atualiza_lista(FILE* arquivo,long long offset_registro_removido,int tamanho
         } 
     }    
 }
+
 //busca e remove os arquivos
 int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VETREGISTROI* vetor_indices){
     int id = registro_buscado.id;
@@ -543,6 +551,9 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
 }
 
 bool reader_delete_where(char *binario,char *indice,int n){
+    // Criando o arquivo de índices
+    reader_create_index(binario, indice);
+
     //traz o arquivo de indices para a ram
     VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
     if(vetor_indices==NULL)
@@ -550,9 +561,7 @@ bool reader_delete_where(char *binario,char *indice,int n){
 
     FILE* arquivo = fopen(binario,"rb+");
     if(!consistente(arquivo))return 0;  
-    fseek(arquivo,0,SEEK_SET);
-    char status='0';
-    fwrite(&status,sizeof(char),1,arquivo);
+    set_status_arquivo(arquivo, '0');
     
     int procurado[6];
     char campo[20];
@@ -642,17 +651,19 @@ bool reader_delete_where(char *binario,char *indice,int n){
     cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)-busca_total);
     cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)+busca_total);
     escreve_cabecalho(arquivo,cabecalho);
-    cabecalho_apagar(&cabecalho);
+
     //reescrever o arquivo de indices a partir do novo vetor
     indice_reescrita(indice, vetor_indices);
-    indice_destruir(vetor_indices);
+    indice_destruir(&vetor_indices);
     //fechando arquivo
-    fseek(arquivo,0,SEEK_SET);
-    status='1';
-    fwrite(&status,sizeof(char),1,arquivo);
+    set_status_arquivo(arquivo, '1');
     fclose(arquivo);
+
     binarioNaTela(binario);
     binarioNaTela(indice);
+
+    // Desalocando a memória e retornando
+    cabecalho_apagar(&cabecalho);
     return true;
 }
 
@@ -665,7 +676,8 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
     long long offset_anterior; // Ponteiro para o registro removido anterior na lista de removidos
     long long proxOffsetLivre; // Próximo offset disponível para inserção ao fim do arquivo
     int tamanho;               // Guarda o tamanho disponível em registros removidos
-    int guardar_tamanho;    // Auxiliar para guardar o tamanho original de um registro inserido com best fit
+    int guardar_tamanho;       // Auxiliar para guardar o tamanho original de um registro inserido com best fit
+    char lixo = '$';
 
     // Lendo, do binário, topo e o próximo byteoffest disponível
     fseek(arquivo, 1, SEEK_SET);
@@ -687,11 +699,10 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
             reaproveitados = 1;
 
             fseek(arquivo,-13,SEEK_CUR);
-            int guardar_tamanho = reg->tamanhoRegistro;
+            guardar_tamanho = reg->tamanhoRegistro;
             reg->tamanhoRegistro = tamanho;
             *byte = ftell(arquivo);
             escreve_registro(arquivo,reg);
-            char lixo = '$';
 
             for(int i = 0; i < tamanho - guardar_tamanho; i++) {
                 fwrite(&lixo, sizeof(char), 1, arquivo);
@@ -726,29 +737,36 @@ bool reader_insert_into(char *binario,char *indice,int n){
     VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
     int reaproveitados = 0;      // Controla a qntd de registros reaproveitados pela estratégia best fit
     REGISTRO r;                  // Guarda os novos registros a serem inseridos
-    char strAux[4];              // Auxiliar para tratar registros com campos fixos com o valor NULO  
-    long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi    
+    char strAux[10];             // Auxiliar para tratar registros fixos com valor NULO
+    long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi
+    int regInvalido = 0;         // Guarda o número de registros invalidos que não foram inseridos
 
+    // Criando o arquivo de índices
+    reader_create_index(binario, indice);
 
     // Carregando o registro de índices na memória
     vetor_indices = indice_carregamento(indice, binario);
     if(vetor_indices == NULL)
         return false;
     
-    arquivo = fopen(binario,"rb+");
     // Abrindo e verificando a consistência do arquivo binário principal
+    arquivo = fopen(binario,"rb+");
     if(!consistente(arquivo))return false;
 
     // Setando o status para inconsistente como medida preventiva
-    status = '0';
-    fseek(arquivo,0,SEEK_SET);
-    fwrite(&status,sizeof(char),1,arquivo);
+    set_status_arquivo(arquivo, '0');
 
     // Coletando os dados e inserindo nos binários n vezes
     for(int i=0;i<n;i++){
-
         // Lendo os campos fixos
-        scanf("%d", &r.id);
+        scan_quote_string(strAux);
+        if(strcmp(strAux, "") == 0) {
+            regInvalido++;
+            continue; // id nulo torna o registro inválido
+        }
+        else
+            r.id = strToInt(strAux, get_tamanho_string(strAux));
+
         scan_quote_string(strAux);
         if(strcmp(strAux, "") == 0)
             r.idade = -1;
@@ -765,25 +783,30 @@ bool reader_insert_into(char *binario,char *indice,int n){
         scan_quote_string(r.nacionalidade);
         scan_quote_string(r.nomeClube);
         r.tamNomeJog = get_tamanho_string(r.nomeJogador);
+        if(r.tamNomeJog == 0)
+            free(r.nomeJogador);
+
         r.tamNacionalidade = get_tamanho_string(r.nacionalidade);
+        if(r.tamNacionalidade == 0)
+            free(r.nacionalidade);
+        
         r.tamNomeClube = get_tamanho_string(r.nomeClube);
+        if(r.tamNomeClube == 0)
+            free(r.nomeClube);
+
         r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
 
         // inserindo no arquivo principal e guardando o byte que foi inserido
-        long long byte;
         reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
 
         //inserindo no vetor de índices
-        REGISTROI x;
-        x.byteOffset = byte;
-        x.id = r.id;
-        indice_inserir(vetor_indices, x);
+        indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
         libera_registro(r);
     }
 
     //atualizando  o n_registros e o n_registros_removidos do arquivo
     CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
-    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+n);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+n - regInvalido);
     cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)-reaproveitados);
     escreve_cabecalho(arquivo,cabecalho);
     cabecalho_apagar(&cabecalho);
@@ -792,14 +815,27 @@ bool reader_insert_into(char *binario,char *indice,int n){
     indice_reescrita(indice, vetor_indices);
 
     // Voltando o status para 1
-    status='1';
-    fseek(arquivo,0,SEEK_SET);
-    fwrite(&status,sizeof(char),1,arquivo);
+    set_status_arquivo(arquivo, '1');
     fclose(arquivo);
 
     // Chamando binario na tela para os arquivos
     binarioNaTela(binario);
     binarioNaTela(indice);
 
+    // Desalocando registros e retornando
+    cabecalho_apagar(&cabecalho);
+    indice_destruir(&vetor_indices);
     return true;
+}
+
+void test() {
+    REGISTRO r;
+            r.tamNomeJog = 1;
+            r.tamNacionalidade=0;
+            r.tamNomeClube = 0;
+            r.nomeJogador = (char*)malloc(sizeof(char)*2);
+            r.nomeJogador = NULL;
+            //libera_registro(r);
+            
+            return;
 }

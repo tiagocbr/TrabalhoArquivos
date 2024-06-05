@@ -52,6 +52,6 @@
     bool indice_reescrita(char *indice, VETREGISTROI *regs);
 
     // Desaloca o vetor de registros na memória principal
-    bool indice_destruir(VETREGISTROI *registros);
+    bool indice_destruir(VETREGISTROI **registros);
 
 #endif

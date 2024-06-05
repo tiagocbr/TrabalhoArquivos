@@ -27,7 +27,7 @@ int get_numero_registros(FILE* arquivo){
 }
 
 bool set_status_arquivo(FILE *arquivo, char status) {
-    if(arquivo != NULL || (status != '0' && status != '1'))
+    if(arquivo == NULL || (status != '0' && status != '1'))
         return false;
 
     if(ftell(arquivo) != 0)

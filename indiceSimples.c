@@ -55,6 +55,7 @@ REGISTROI indice_get_registroi_vetor(VETREGISTROI *vet, int pos) {
     return regNulo;
 }
 
+
 bool indice_criar(char *indice, REGISTROI *registros, int tamanho) {
     if(registros == NULL)
         return false;
@@ -72,6 +73,7 @@ bool indice_criar(char *indice, REGISTROI *registros, int tamanho) {
 
     // Chamando reescrita com vetRegistros para criar o arquivo de índices
     res = indice_reescrita(indice, vetRegistros);
+    indice_destruir(&vetRegistros);
     return res;
 }
 
@@ -199,7 +201,7 @@ bool indice_reescrita(char *indice, VETREGISTROI *regs) {
         return false;
 
     // Reescrevendo o status e os registros
-    fwrite(&cabecalho, sizeof(char), 1, arquivo);
+    set_status_arquivo(arquivo, '0');
     for(int i = 0; i < regs->nReg; i++) {
         if(regs->vet[i].byteOffset != -1) {
             fwrite(&regs->vet[i].id, sizeof(int), 1, arquivo);
@@ -208,22 +210,20 @@ bool indice_reescrita(char *indice, VETREGISTROI *regs) {
     }
 
     // Se o loop terminou, podemos colocar o status do arquivo como consistente.
-    cabecalho = '1';
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite(&cabecalho, sizeof(char), 1, arquivo);
+    set_status_arquivo(arquivo, '1');
 
     fclose(arquivo);
     return true;   
 }
 
-bool indice_destruir(VETREGISTROI *registros) {
-    if(registros == NULL)
+bool indice_destruir(VETREGISTROI **registros) {
+    if(*registros == NULL)
         return false;
 
-    free(registros->vet);
-    registros->vet = NULL;
+    free((*registros)->vet);
+    (*registros)->vet = NULL;
     
-    free(registros);
-    registros = NULL;
+    free(*registros);
+    *registros = NULL;
     return true;
 }

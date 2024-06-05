@@ -2,7 +2,7 @@ all: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o program
 	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o -Wall -std=c99 -o programaTrab
 
 run: all
-	./programaTrab > test.txt
+	./programaTrab
 
 programaTrab.o: programaTrab.c
 	gcc -c programaTrab.c -o programaTrab.o
@@ -27,7 +27,13 @@ eraseBin:
 	rm *.bin
 
 debug7:
-	cp arquivos\ 2/Entrada/binario9.bin .
+	cp arquivos\ 2/Entrada/binario10.bin .
 
-clean: debug7
+allValgrind: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o programaTrab.o
+	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o -g -Wall -std=c99 -o programaTrab
+
+runValgrind: allValgrind
+	valgrind -s --tool=memcheck --leak-check=yes ./programaTrab
+
+clean: 
 	rm *.o programaTrab

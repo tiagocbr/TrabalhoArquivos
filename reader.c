@@ -1,6 +1,8 @@
+#include "util.h"
 #include "reader.h"
 #include "regCabecalho.h"
 #include "funcoes_fornecidas.h"
+#include "indiceSimples.h"
 
 struct registro{
     char removido;
@@ -15,198 +17,6 @@ struct registro{
     int tamNomeClube;
     char *nomeClube;     //campo 5
 };
-typedef struct offset_tamanho OT;
-struct offset_tamanho{
-    int tamanhoReg;
-    long long offsetReg;
-};
-// Função auxiliar que percorre o csv para descobrir o seu número total de registros
-int get_numero_registros(FILE* arquivo){
-    char aux;
-    int n=0;
-
-    while(fscanf(arquivo,"%c",&aux)!=EOF){
-        if(aux==',')n++;
-    }
-    n=n/4;
-    fseek(arquivo,45,SEEK_SET);
-    return n-1;
-}
-
-// Função auxiliar que pega uma string lida no csv e a converte em inteiro
-// (Usada para armazenar os campos id e idade)
-int strToInt(char *str, int tam) {
-    if(tam == 0)
-        return -1;
-
-    if(str != NULL) {
-        int n = 0;
-        int casaDec = 1;
-
-        for(int i = tam-1; i>=0; i--) {
-            n += (str[i]-'0') * casaDec;
-            casaDec *= 10;
-        }
-
-        return n;
-    }
-    return -1;
-}
-
-// Função auxiliar que lê um determinado valor dos registros do csv e armazena
-// Seu valor no respectivo campo do registro atual do vetor de registros.
-void ler_campo(FILE *arquivo,int campo,int registro_atual,REGISTRO* registros, CABECALHO *cabecalho){
-    char* valor;  // String dinâmica que armazena o campo lido
-    int i=0;      // Index da string (usado para armazenar os caracteres do registro)
-    int t=20;     // Tamanho da string (iniciada com 20)
-    char aux;     // variável auxiliar que recebe um char do campo no csv para armazena-lo na string valor
-
-    valor=(char*)malloc(sizeof(char)*20);
-
-    // Loop que lê o campo char a char para armazená-lo em valor.
-    while(fscanf(arquivo,"%c",&aux) != EOF) {
-        if(aux==',' || aux=='\n' || aux == '\r'){
-            break;
-        }
-        valor[i]=aux;
-        i++;
-        if(i==t){
-            valor = (char*)realloc(valor,sizeof(char)*(2*i));
-            t=2*t;
-        }
-    }
-
-    // Escolhendo o campo correto da struct para o valor lido
-    switch(campo){
-        case 1: 
-            registros[registro_atual].id = strToInt(valor, i);
-            free(valor);
-            break;
-
-        case 2: 
-            registros[registro_atual].idade = strToInt(valor, i);
-            free(valor);
-            break;
-
-        case 3: 
-            registros[registro_atual].nomeJogador = valor;
-            registros[registro_atual].tamNomeJog = i;
-            registros[registro_atual].tamanhoRegistro+=i;
-            break;
-
-        case 4: 
-            registros[registro_atual].nacionalidade = valor;
-            registros[registro_atual].tamNacionalidade = i;
-            registros[registro_atual].tamanhoRegistro+=i;
-            break;
-        case 5: 
-            registros[registro_atual].nomeClube = valor;
-            registros[registro_atual].tamNomeClube = i;
-            registros[registro_atual].tamanhoRegistro+=i;
-            cabecalho_set_proxOffset(cabecalho , registros[registro_atual].tamanhoRegistro + cabecalho_get_proxOffset(cabecalho));
-            break;
-    }
-}
-
-// Função auxiliar que escreve no arquivo binário o registro de cabeçalho
-void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
-    if (cabecalho != NULL) {
-        // Passando os dados do TAD para variáveis locais
-        char status=cabecalho_get_status(cabecalho);
-        long long topo =  cabecalho_get_topo(cabecalho);
-        long long proxByteOffset = cabecalho_get_proxOffset(cabecalho);
-        int nroRegArq = cabecalho_get_nroRegArq(cabecalho);
-        int nroRegRem = cabecalho_get_nroRegRem(cabecalho);
-
-        // Escrevendo o cabeçalho no arquivo
-        fwrite(&status, sizeof(char),1,arquivo);
-        fwrite(&topo, sizeof(long long),1,arquivo);
-        fwrite(&proxByteOffset, sizeof(long long),1,arquivo);
-        fwrite(&nroRegArq, sizeof(int),1,arquivo);
-        fwrite(&nroRegRem, sizeof(int),1,arquivo);
-    
-    }
-}
-
-void escreve_registro(FILE *arquivo, REGISTRO *registros, int qntd) {
-    if (registros != NULL) {
-        for(int i = 0; i < qntd; i++) {
-            // Escrevendo campos fixos
-            fwrite(&registros[i].removido, sizeof(char), 1, arquivo);
-            fwrite(&registros[i].tamanhoRegistro, sizeof(int), 1, arquivo);
-            fwrite(&registros[i].prox, sizeof(long long), 1, arquivo);
-            fwrite(&registros[i].id, sizeof(int), 1, arquivo);
-            fwrite(&registros[i].idade, sizeof(int), 1, arquivo);
-
-            // Escrevendo campos variáveis(se forem informados)
-            fwrite(&registros[i].tamNomeJog, sizeof(int), 1, arquivo);
-            if(registros[i].tamNomeJog != 0)
-                fwrite(registros[i].nomeJogador, sizeof(char), registros[i].tamNomeJog, arquivo);
-
-            fwrite(&registros[i].tamNacionalidade, sizeof(int), 1, arquivo);
-            if(registros[i].tamNacionalidade != 0)
-                fwrite(registros[i].nacionalidade, sizeof(char), registros[i].tamNacionalidade, arquivo);
-
-            fwrite(&registros[i].tamNomeClube, sizeof(int), 1, arquivo);
-            if(registros[i].tamNomeClube != 0)
-                fwrite(registros[i].nomeClube, sizeof(char), registros[i].tamNomeClube, arquivo);
-        }
-    }
-}
-
-bool reader_create_table(char* csv,char* binario) {
-    // Abrindo o arquivo csv para ler os dados
-    // arquivo é o ponteiro usado para ler ambos arquivos
-    FILE* arquivo=fopen(csv,"r");
-    if(arquivo==NULL){return false;}
-
-    int n=get_numero_registros(arquivo);
-    
-    // Instanciando as structs do vetor registro de dados e do cabeçalho
-    CABECALHO *cabecalho = cabecalho_criar();
-    REGISTRO* registros = (REGISTRO*)malloc(n*sizeof(REGISTRO));
-
-    cabecalho_set_nroRegArq(cabecalho,n);
-
-    // Lendo no csv cada registro e armazenando-o no vetor
-    for(int registro_atual=0;registro_atual<n;registro_atual++){
-        registros[registro_atual].removido = '0';
-        registros[registro_atual].tamanhoRegistro = 33;
-        registros[registro_atual].prox = -1;
-
-        for(int i=1;i<=5;i++) {
-            ler_campo(arquivo,i,registro_atual,registros, cabecalho);
-        }
-    }
-    fclose(arquivo);
-
-    // Criando o binário
-    arquivo = fopen(binario, "wb"); 
-    if(arquivo == NULL) {return false;}
-
-    // Escrevendo o registro de cabeçalho no binário
-    escreve_cabecalho(arquivo, cabecalho);
-    escreve_registro(arquivo, registros, n);
-
-    fseek(arquivo, 0, SEEK_SET);
-    cabecalho_set_status(cabecalho);
-    escreve_cabecalho(arquivo,cabecalho);
-    fclose(arquivo);
-
-
-    cabecalho_apagar(&cabecalho);
-    for(int i=0;i<n;i++){
-        free(registros[i].nomeJogador);
-        free(registros[i].nomeClube);
-        free(registros[i].nacionalidade);
-    }
-    free(registros);
-    registros = NULL;
-
-    binarioNaTela(binario);
-
-    return true;
-}
 
 // Função auxiliar que, dado um ponteiro para FILE na posção inicial de um
 // registro, lê e imprime seus valores
@@ -227,7 +37,7 @@ void imprime_registro(REGISTRO r) {
     if(r.removido == '0') {
         printf("Nome do Jogador: %s\n", r.nomeJogador);
         printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        printf("Clube do Jogador: %s\n\n", r.nomeClube);
+        printf("Clube do Jogador: %s\n\n", r.nomeClube);  
     }
 }
 
@@ -249,193 +59,241 @@ void libera_registro(REGISTRO r){
 
 }
 
+// Função auxiliar que lê um determinado valor dos registros do csv e armazena
+// Seu valor no respectivo campo do registro atual do vetor de registros.
+void ler_campo(FILE *arquivo,int campo,REGISTRO* registro, CABECALHO *cabecalho){
+    char* valor;  // String dinâmica que armazena o campo lido
+    int i=0;      // Index da string (usado para armazenar os caracteres do registro)
+    int t=20;     // Tamanho da string (iniciada com 20)
+    char aux;     // variável auxiliar que recebe um char do campo no csv para armazena-lo na string valor
+
+    valor=(char*)malloc(sizeof(char)*20);
+
+    // Loop que lê o campo char a char para armazená-lo em valor.
+    while(fscanf(arquivo,"%c",&aux) != EOF) {
+        if(aux==',' || aux=='\n' || aux == '\r'){
+            if(aux=='\r')fscanf(arquivo,"%c",&aux);
+            break;
+        }
+        valor[i]=aux;
+        i++;
+        if(i==t){
+            valor = (char*)realloc(valor,sizeof(char)*(2*i));
+            t=2*t;
+        }
+    }
+
+    if(i == 0) {
+        free(valor);
+        valor = NULL;
+    }
+
+    // Escolhendo o campo correto da struct para o valor lido
+    switch(campo){
+        case 1: 
+            (*registro).id = strToInt(valor, i);
+            free(valor);
+            break;
+
+        case 2: 
+            (*registro).idade = strToInt(valor, i);
+            free(valor);
+            break;
+
+        case 3: 
+            (*registro).nomeJogador = valor;
+            (*registro).tamNomeJog = i;
+            (*registro).tamanhoRegistro+=i;
+            break;
+
+        case 4: 
+            (*registro).nacionalidade = valor;
+            (*registro).tamNacionalidade = i;
+            (*registro).tamanhoRegistro+=i;
+            break;
+        case 5: 
+            (*registro).nomeClube = valor;
+            (*registro).tamNomeClube = i;
+            (*registro).tamanhoRegistro+=i;
+            cabecalho_set_proxOffset(cabecalho , (*registro).tamanhoRegistro + cabecalho_get_proxOffset(cabecalho));
+            break;
+    }
+}
+
+void escreve_registro(FILE *arquivo, REGISTRO* registro) {
+    // Escrevendo campos fixos
+    fwrite(&registro->removido, sizeof(char), 1, arquivo);
+    fwrite(&registro->tamanhoRegistro, sizeof(int), 1, arquivo);
+    fwrite(&registro->prox, sizeof(long long), 1, arquivo);
+    fwrite(&registro->id, sizeof(int), 1, arquivo);
+    fwrite(&registro->idade, sizeof(int), 1, arquivo);
+
+    // Escrevendo campos variáveis(se forem informados)
+    fwrite(&registro->tamNomeJog, sizeof(int), 1, arquivo);
+    if(registro->tamNomeJog != 0)
+        fwrite(registro->nomeJogador, sizeof(char), registro->tamNomeJog, arquivo);
+
+    fwrite(&registro->tamNacionalidade, sizeof(int), 1, arquivo);
+    if(registro->tamNacionalidade != 0)
+        fwrite(registro->nacionalidade, sizeof(char), registro->tamNacionalidade, arquivo);
+
+    fwrite(&registro->tamNomeClube, sizeof(int), 1, arquivo);
+    if(registro->tamNomeClube != 0)
+        fwrite(registro->nomeClube, sizeof(char), registro->tamNomeClube, arquivo);
+}
+
+bool reader_create_table(char* csv,char* binario) {
+    // Abrindo o arquivo csv para ler os dados
+    // arquivo é o ponteiro usado para ler ambos arquivos
+    FILE* arquivo=fopen(csv,"r");
+    if(arquivo==NULL){return false;}
+
+    int n=get_numero_registros(arquivo);
+    
+    // Instanciando as structs do vetor registro de dados e do cabeçalho
+    CABECALHO *cabecalho = cabecalho_criar();
+
+    cabecalho_set_nroRegArq(cabecalho,n);
+
+    // Criando o binário
+    FILE* arquivo_bin = fopen(binario, "wb"); 
+    if(arquivo == NULL) {return false;}
+    // Escrevendo o registro de cabeçalho no binário
+    escreve_cabecalho(arquivo_bin, cabecalho);
+
+    long long proxOffset = 25;
+    // Lendo no csv cada registro e armazenando-o no binário
+    for(int registro_atual=0;registro_atual<n;registro_atual++){
+        REGISTRO r;
+        r.removido = '0';
+        r.tamanhoRegistro = 33;
+        r.prox = -1;
+
+        for(int i=1;i<=5;i++) {
+            ler_campo(arquivo,i,&r, cabecalho);
+        }
+        escreve_registro(arquivo_bin, &r);
+        libera_registro(r);
+        if(registro_atual == n-1)proxOffset = ftell(arquivo_bin);
+    }
+    fclose(arquivo);
+
+    cabecalho_set_status(cabecalho);
+    cabecalho_set_proxOffset(cabecalho,proxOffset);
+    escreve_cabecalho(arquivo_bin,cabecalho);
+
+    fclose(arquivo_bin);
+
+    cabecalho_apagar(&cabecalho);
+
+    binarioNaTela(binario);
+
+    return true;
+}
+
 // Função auxiliar que le um registro do arquivo binário e o salva em uma variável da struct
 // registro
 REGISTRO ler_registro_binario(FILE *arquivo){
     REGISTRO r;     // Variável que armazena e retorna o registro lido
-
+    long long ini = ftell(arquivo);
     // Lendo os campos fixos do registro
     fread(&r.removido, sizeof(char), 1, arquivo);
     fread(&r.tamanhoRegistro, sizeof(int), 1, arquivo);
     fread(&r.prox, sizeof(long long), 1, arquivo);
     fread(&r.id, sizeof(int), 1, arquivo);
     fread(&r.idade, sizeof(int), 1, arquivo);
+    long long prox = ini+r.tamanhoRegistro;
 
-    // Pulando os campos variáveis caso o registro esteja lógicamente removido
-    if(r.removido == '1') {
-        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNomeJog, SEEK_CUR);
-        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNacionalidade, SEEK_CUR);
-        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
-        fseek(arquivo, r.tamNomeClube, SEEK_CUR);
-
-        r.nacionalidade = NULL;
+    // Lendo e alocando os campos variávies, quando necessário
+    fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
+    if(r.tamNomeJog == 0)
         r.nomeJogador = NULL;
-        r.nomeClube = NULL;
-    }
     else {
-        // Lendo e alocando os campos variávies, quando necessário
-        fread(&r.tamNomeJog, sizeof(int), 1, arquivo);
-        if(r.tamNomeJog == 0)
-            r.nomeJogador = NULL;
-        else {
-            r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
+        r.nomeJogador = (char *) malloc((r.tamNomeJog+1) * sizeof(char));
 
-            if(r.nomeJogador != NULL) {
-                fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
-                r.nomeJogador[r.tamNomeJog] = '\0';
-            }
-        }
-
-        fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
-        if(r.tamNacionalidade == 0)
-            r.nacionalidade = NULL;
-        else {
-            r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
-
-            if(r.nacionalidade != NULL) {
-                fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
-                r.nacionalidade[r.tamNacionalidade] = '\0';
-            }
-        }
-
-        fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
-        if(r.tamNomeClube == 0)
-            r.nomeClube = NULL;
-        else {
-            r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
-
-            if(r.nomeClube != NULL) {
-                fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
-                r.nomeClube[r.tamNomeClube] = '\0';
-            }
+        if(r.nomeJogador != NULL) {
+            fread(r.nomeJogador, sizeof(char), r.tamNomeJog, arquivo);
+            r.nomeJogador[r.tamNomeJog] = '\0';
         }
     }
+
+    fread(&r.tamNacionalidade, sizeof(int), 1, arquivo);
+    if(r.tamNacionalidade == 0)
+        r.nacionalidade = NULL;
+    else {
+        r.nacionalidade = (char *) malloc((r.tamNacionalidade+1) * sizeof(char));
+
+        if(r.nacionalidade != NULL) {
+            fread(r.nacionalidade, sizeof(char), r.tamNacionalidade, arquivo);
+            r.nacionalidade[r.tamNacionalidade] = '\0';
+        }
+    }
+
+    fread(&r.tamNomeClube, sizeof(int), 1, arquivo);
+    if(r.tamNomeClube == 0)
+        r.nomeClube = NULL;
+    else {
+        r.nomeClube = (char *) malloc((r.tamNomeClube+1) * sizeof(char));
+
+        if(r.nomeClube != NULL) {
+            fread(r.nomeClube, sizeof(char), r.tamNomeClube, arquivo);
+            r.nomeClube[r.tamNomeClube] = '\0';
+        }
+    }
+    
+    fseek(arquivo,prox,SEEK_SET);
     return r;
 }
 
 bool reader_select_from(char *binario) {
-    FILE *arquivo;      // Ponteiro para o arquivo informado
-    int tamanho;        // Armazena a quantidade de registros no arquivo binário
     REGISTRO r;
+    FILE *arquivo = fopen(binario, "rb");
+    // Verificando se o arquivo está consistente
+     if(!consistente(arquivo))
+        return false;
 
-    arquivo = fopen(binario, "rb");
-    if(arquivo == NULL) {return false;}
+    CABECALHO* cabecalho = cabecalho_from_arquivo(arquivo);
 
-    // Salvando o nroRegArq do cabeçalho em tamanho
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&tamanho, sizeof(int), 1, arquivo);
+    // Salvando o total de registros para iterar sobre o arquivo
+    int total=cabecalho_get_nroRegArq(cabecalho)+cabecalho_get_nroRegRem(cabecalho);
     
     // Lendo e imprimindo todos os registros do arquivo, se houver
-    if(tamanho == 0) {
+    if(cabecalho_get_nroRegArq(cabecalho) == 0) {
         printf("Registro inexistente.\n\n");
     }
     else {
-        fseek(arquivo, 4, SEEK_CUR);
-
-        while(1) {
+        while(total--) {
             r = ler_registro_binario(arquivo);
-            if(!feof(arquivo)) {
-                imprime_registro(r);
-                libera_registro(r);
-            }
-            else {
-                break;
-            }
+            imprime_registro(r);
+            libera_registro(r);
         }
-
-        libera_registro(r);
     }
-
+    cabecalho_apagar(&cabecalho);
     fclose(arquivo);
     return true;
 }
-//função que atualiza a lista de removidos e cabeçalho
-void atualiza_lista(FILE* arquivo,OT* regs,int qntd){
-    //SETANDO AS VARIAVEIS
-    int ponteiro_regs=0;
-    long long offset_topo = 1;
-    //atualizando o numero de registros no cabecalho
-    fseek(arquivo,17,SEEK_SET);
-    int nRegArq;
-    fread(&nRegArq,sizeof(int),1,arquivo);
-    nRegArq-=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nRegArq,sizeof(int),1,arquivo);
-    //atualiza o numero de registros removidos no cabecalho
-    int nroRegRem=0;
-    fread(&nroRegRem,sizeof(int),1,arquivo);
-    nroRegRem+=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&nroRegRem,sizeof(int),1,arquivo);
-    //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
-    fseek(arquivo,offset_topo,SEEK_SET)
-    long long prox;
-    fread(&prox,sizeof(long long),1,arquivo);
-    long long offset_anterior = offset_topo;
-    while(ponteiro_regs<qntd){
-        //offset e tamanho do registro que quero inserir na lista de removidos
-        long long offset_registro_removido = OT[ponteiro_regs].offsetReg;
-        int tamanhoRegistro = OT[ponteiro_regs].tamanhoReg;
-        if(prox==-1){ //se estiver no final da lista
-            //coloca o elemento atual para apontar para o registro que quero inserir na lista de removidos
-            fseek(arquivo,-8,SEEK_CUR);
-            fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
-            //coloca o proximo da lista como -1,pois sera inserida no final
-            fseek(arquivo,offset_registro_removido+5,SEEK_SET);
-            prox =-1;
-            fwrite(&prox,sizeof(long long),1,arquivo);
 
-            ponteiro_regs++;
-            offset_anterior = offset_registro_removido+5;
-        }
-        else{
-            //pula para o proximo elemento
-            fseek(arquivo,prox+1,SEEK_SET)
-            int tamanho_registro_atual=-1;
-            long long offset_elemento_atual_da_lista = ftell(arquivo) - 1;
-            fread(&tamanho_registro_atual,sizeof(int),1,arquivo);
-            //se o proximo elemento tiver tamanho maior do que o que eu quero inserir
-            if(tamanho_registro_atual>=tamanhoRegistro){
-                //coloca o elemento removido para apontar para o registro atual
-                //na proxima iteração o prox será igual a esse elemento novamente
-                prox = offset_elemento_atual_da_lista;
-                fseek(arquivo,offset_registro_removido+5,SEEK_SET);
-                fwrite(&prox,sizeof(long long),1,arquivo);
-                //coloca o elemento anterior para apontar para o registro removido
-                fseek(arquivo,offset_anterior,SEEK_SET);
-                fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
-                ponteiro_regs++;
-                offset_anterior = offset_registro_removido+5;
-            }
-            else{
-                fread(&prox,sizeof(long long),1,arquivo);
-            }  
-        } 
-    }    
-}
-//função que realiza as buscas no arquivo principal e guarda os registros no vetor de registros REGS
-int busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,REGISTRO *regs,int ini,int *procurado){
+
+//função que realiza as buscas no arquivo principal e printa
+bool busca_no_arqDados(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     int id = registro_buscado.id;
-    int idade = registro_buscado.idade.
+    int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
-    int n_registros;
-    // Salvando o numero de registros do arquivo na variavel n_registros
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-    // Percorrendo o arquivo para a busca atual
-    fseek(arquivo,25,SEEK_SET);
-    long long offset_prox_registro = 25;
-    long long offset_registro_removido = -1;
-    int qntdBuscas = 0;
-    for(int j = 0; j < n_registros; j++) {
+    bool id_encontrado=false;
+    bool ok=false;
+    // Salvando o numero de registros e registros removidos
+    CABECALHO* cabecalho = cabecalho_from_arquivo(arquivo);
+    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+    cabecalho_apagar(&cabecalho);
+    for(int j = 0; j < total; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
+        if(r.removido == '1'){
+            libera_registro(r);
+            continue;
+        }
         bool ok = true;
-        offset_registro_removido = off_set_proximo_registro;
-        offset_proximo_registro+=r.tamanhoRegistro;
         for(int k = 1; k <= 5; k++) {
             if(procurado[k] == 0) continue;
             switch(k) {
@@ -460,51 +318,29 @@ int busca_no_binario(FILE* arquivo,REGISTRO registro_buscado,REGISTRO *regs,int 
                     break;
             }
         }
-        if(ok && r.removido == '0') {
-            regs[ini + qntdBuscas] = r;
-            qntdBuscas += 1;
+        if(ok) {
+            imprime_registro(r);
+            libera_registro(r);
+            ok=true;
         }
         else 
             libera_registro(r);
         if(id_encontrado) {
-            id_encontrado = 0;
-            return qntdBuscas;     // Parando a busca caso o id tenha sido encontrado
-        }
+            return ok;     // Parando a busca caso o id tenha sido encontrado
+       }
     }
-    return qntdBuscas;
+    return ok;
+    
 }
+
 bool reader_select_where(char * binario, int qntd) {
-    FILE *arquivo;          // Ponteiro para o arquivo binário
     char campo[30];         // Campo que o usuário digitará para a busca
     int procurado[6];       // vetor para controle dos campos o usuário está procurando
-    REGISTRO *regs;         // Vetor que armazena os registros encontrados na busca
-    int tamanho;            // Variável auxiliar para indexar o vetor de registros por buscas
-    int *qntdBuscas;        // Vetor que armazena a quantidade de registros encontrados para cada busca
-    bool id_encontrado = 0; // Variável auxiliar que para a busca caso a condição seja um id e este tenha sido encontrado
-
-    // Variáveis que guardam as condições da busca para cada campo informadas pelo usuário
-    int id;
-    int idade;
-    char nomeClube[100];
-    char nacionalidade[100];
-    char nomeJogador[100];
 
     // Abrindo e verificando a própria abertura do arquivo
-    arquivo = fopen(binario, "rb");
-    if(arquivo == NULL)
-        return false;
+    FILE *arquivo = fopen(binario, "rb");
+    if(!consistente(arquivo))return false;
 
-    // Alocando o vetor de registros
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&tamanho, sizeof(int), 1, arquivo);
-    // Alocando regs e qntdBuscas (e inicializando o último com 0)
-    regs = (REGISTRO *) malloc(tamanho * sizeof(REGISTRO));
-    qntdBuscas = (int *) malloc(qntd * sizeof(int));
-    if(regs == NULL || qntdBuscas == NULL)
-        return false;
-    
-    for(int i = 0; i < qntd; i++) qntdBuscas[i] = 0;
-    tamanho = 0;    // Vai ser reutilizado para acessar as posições corretas do vetor de registros
 
     // Loop externo que executa a qntd de buscas informadas
     for(int i = 0; i < qntd; i++){
@@ -516,6 +352,9 @@ bool reader_select_where(char * binario, int qntd) {
 
         // Recebendo as condições do usuário para cada parametro ad busca atual
         REGISTRO registro_buscado;
+        registro_buscado.tamNomeJog=0;
+        registro_buscado.tamNomeClube=0;
+        registro_buscado.tamNacionalidade=0;
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
 
@@ -531,90 +370,147 @@ bool reader_select_where(char * binario, int qntd) {
                 procurado[3]=1;
                 registro_buscado.nomeJogador = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nomeJogador);
+                registro_buscado.tamNomeJog = get_tamanho_string(registro_buscado.nomeJogador);
             }
             if(strcmp(campo,"nacionalidade") == 0) {
                 procurado[4]=1;
                 registro_buscado.nacionalidade = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nacionalidade);
+                registro_buscado.tamNacionalidade = get_tamanho_string(registro_buscado.nacionalidade);
             }
             if(strcmp(campo,"nomeClube") == 0) {
                 procurado[5]=1;
                 registro_buscado.nomeClube = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nomeClube);
+                registro_buscado.tamNomeClube = get_tamanho_string(registro_buscado.nomeClube);
             }
         }
-
-        qntdBuscas[i] = busca_no_binario(arquivo,registro_buscado,regs,tamanho,procurado);
-        libera_registro(registro_buscado);
-        tamanho += qntdBuscas[i];
-    }
-
-    // Imprimindo os resultados das buscas armazenadas no vetor
-    tamanho = 0;
-    for(int i = 0; i < qntd; i++) {
+        //Buscando e printando
         printf("Busca %d\n\n", i + 1);
-
-        if(qntdBuscas[i] > 0) {
-            for(int j = 0; j < qntdBuscas[i]; j++) {
-                imprime_registro(regs[tamanho + j]);
-                libera_registro(regs[tamanho + j]);
-            }
-        }
-        else
-            printf("Registro inexistente.\n\n");
-        tamanho += qntdBuscas[i];
+        //essa função busca e ja printa os registros encontrados,retornando false caso nenhum seja encontrado
+        if(!busca_no_arqDados(arquivo,registro_buscado,procurado))printf("Registro inexistente.\n\n");
+        libera_registro(registro_buscado);
     }
-
-    free(qntdBuscas);
-    free(regs);
 
     fclose(arquivo);
     return true;
 }
 
-bool busca_binaria(int id,int ini,int fim,REGISTRO_INDICE* arr,long long *offset_removido){
-    while(ini<=fim){
-        int meio = (ini+fim)/2;
-        if(arr[meio].id==id){
-            *offset_removido = arr[meio].offset;
-            return true;
+bool reader_create_index(char *binario, char *indice) {
+    long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
+    REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
+    REGISTROI *registrosi;     // Vetor para temporariamente armazenar os registros de índice 
+    int total;                 // Guarda o número total de registros no arquivo de dados
+    int i = 0;                 // Index para o vetor de registrosi
+
+    // Abrindo e verificando o arquivo binário para leitura
+    FILE *arquivo = fopen(binario, "rb");
+    if(!consistente(arquivo)) return false;
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+
+    // Criando o vetor de registros do índice com o número de registros do arquivo
+    registrosi = (REGISTROI *) malloc(sizeof(REGISTROI) * cabecalho_get_nroRegArq(cabecalho));
+    if(registrosi == NULL)
+        return false;
+    total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+
+    // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
+    while(total--) {
+        regDados = ler_registro_binario(arquivo);
+        if(regDados.removido != '1') {
+            registrosi[i] = indice_criar_registro(regDados.id, offsetReg);
+            i++;
         }
-        else if(arr[meio].id<id)ini=meio+1;
-        else fim = meio-1;
+
+        // Atualizando o offset para o próximo registro
+        offsetReg += (long long) regDados.tamanhoRegistro;
+        libera_registro(regDados);
     }
-    return false;
-  
+    quickSort(registrosi, 0, cabecalho_get_nroRegArq(cabecalho) - 1);
+
+    // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
+    fclose(arquivo);
+    bool res = indice_criar(indice, registrosi, cabecalho_get_nroRegArq(cabecalho));
+
+    // Desalocando a memória e retorno da funcionalidade
+    cabecalho_apagar(&cabecalho);
+    return res;
 }
 
-//faz a mesma coisa que a busca_no_binario so que guarda o offset e o id dos registros encontrados, e nao os registros em sí
-int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_regs,int ini,int *procurado){
+//função que atualiza a lista de removidos e cabeçalho com base no vetor regs que precisa estar ordenado em ordem crescente de tamanho
+//essa ordenação diminuirá a complexidade de atualizar a lista ao final de todas as remoções
+void atualiza_lista(FILE* arquivo,long long offset_registro_removido,int tamanhoRegistro){
+    long long offset_topo = 1;
+    //começar a percorrer a lista a partir do primeiro elemento indicado pelo campo topo no cabeçalho
+    fseek(arquivo,offset_topo,SEEK_SET);
+    long long prox;
+    fread(&prox,sizeof(long long),1,arquivo);
+    long long offset_anterior = offset_topo;
+    while(1){
+        if(prox==-1){ //se estiver no final da lista
+            //coloca o elemento atual para apontar para o registro que quero inserir na lista de removidos
+            fseek(arquivo,-8,SEEK_CUR);
+            fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+            //coloca o proximo da lista como -1,pois sera inserida no final
+            fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+            prox=-1;
+            fwrite(&prox,sizeof(long long),1,arquivo);
+            break;
+        }
+        else{
+            //pula para o proximo elemento
+            fseek(arquivo,prox+1,SEEK_SET);
+            long long atual=prox; //agora o ponteiro esta em prox
+            int tamanho_registro_atual=-1;
+            fread(&tamanho_registro_atual,sizeof(int),1,arquivo);
+            //se o proximo elemento tiver tamanho maior do que o que eu quero inserir
+            if(tamanho_registro_atual>=tamanhoRegistro){
+                //coloca o elemento removido para apontar para o registro atual
+                fseek(arquivo,offset_registro_removido+5,SEEK_SET);
+                fwrite(&atual,sizeof(long long),1,arquivo);
+                //coloca o elemento anterior para apontar para o registro removido
+                fseek(arquivo,offset_anterior,SEEK_SET);
+                fwrite(&offset_registro_removido,sizeof(long long),1,arquivo);
+                break;
+            }
+            else{
+                offset_anterior = atual+5;
+                fread(&prox,sizeof(long long),1,arquivo);
+            }  
+        } 
+    }    
+}
+
+//busca e remove os arquivos
+int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VETREGISTROI* vetor_indices){
     int id = registro_buscado.id;
-    int idade = registro_buscado.idade.
+    int idade = registro_buscado.idade;
     char* nomeJogador =  registro_buscado.nomeJogador;
     char* nacionalidade = registro_buscado.nacionalidade;
     char* nomeClube = registro_buscado.nomeClube;
-    int n_registros;
     // Salvando o numero de registros do arquivo na variavel n_registros
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+    int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+    cabecalho_apagar(&cabecalho);
     // Percorrendo o arquivo para a busca atual
-    fseek(arquivo,25,SEEK_SET);
     long long offset_prox_registro = 25;
-    long long offset_registro_removido = -1;
+    long long offset_registro_atual = -1;
     int qntdBuscas = 0;
-    for(int j = 0; j < n_registros; j++) {
+    for(int j = 0; j < total; j++) {
         REGISTRO r = ler_registro_binario(arquivo);
+        if(r.removido == '1'){
+            libera_registro(r);
+            continue;
+        }
         bool ok = true;
-        offset_registro_removido = off_set_proximo_registro;
-        offset_proximo_registro+=r.tamanhoRegistro;
+        offset_registro_atual = ftell(arquivo)-r.tamanhoRegistro;
+        offset_prox_registro=ftell(arquivo);
         for(int k = 1; k <= 5; k++) {
             if(procurado[k] == 0) continue;
             switch(k) {
                 case 1: 
                     if(id!=r.id) 
                         ok=false;
-                    else
-                        id_encontrado = true;
                     break;
                 case 2: 
                     if(idade!=r.idade)
@@ -631,67 +527,46 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,OT *regs,int*id_r
                     break;
             }
         }
-        if(ok && r.removido == '0') {
-            regs[ini + qntdBuscas].offsetReg = ftell(arquivo) - r.tamanhoRegistro; //offset para atualizar a lista depois
-            id_regs[ini + qntdBuscas] = r.id; //id para atualizar o registros de indices depois
-            regs[ini+qntdBuscas].tamanhoReg = r.tamanhoRegistro; //tamanho para atualizar a lista de removidos de maneira mais otimizada
-            qntdBuscas += 1;
-            //marcando o arquivo como removido
-            fseek(arquivo,offset_registro_removido,SEEK_SET);
+        if(ok) { //remove o registro
+
+            indice_remover(vetor_indices, r.id); //remove do vetor de indices
+
+            //marcando o registro como removido no arquivo principal
+            fseek(arquivo,offset_registro_atual,SEEK_SET);
             char remov='1';
             fwrite(&remov,sizeof(char),1,arquivo);
+
+            //atualiza a lista de registros removidos
+            atualiza_lista(arquivo,offset_registro_atual,r.tamanhoRegistro); 
+            qntdBuscas += 1;
+            
+            //voltando o ponteiro para continuar as buscas
             fseek(arquivo,offset_prox_registro,SEEK_SET);
             libera_registro(r);
         }
         else 
             libera_registro(r);
-        if(id_encontrado) {
-            id_encontrado = 0;
-            return qntdBuscas;     // Parando a busca caso o id tenha sido encontrado
-        }
     }
     return qntdBuscas;
 }
-bool reader_delete_where(char *binario,char *indices,int n){
-    FILE* arquivo = fopen(binario,"wb+");
-    FILE* indice = fopen(indices,"rb");
-    //fazendo as verificações de status
-    char status;
-    fread(&status,sizeof(char),1,arquivo);
-    if(status=='0'){
-        printf("Falha no processamento do arquivo.");
-    }
-    else{
-        fseek(arquivo,-1,SEEK_CUR);
-        status='0';
-        fwrite(&status,sizeof(char),1,arquivo);
-    }
-    fread(&status,sizeof(char),1,indice);
-    if(status=='0'){
-        printf("Falha no processamento do arquivo.");
-    }
-    else{
-        fseek(indice,-1,SEEK_CUR);
-        status='0';
-        fwrite(&status,sizeof(char),1,indice);
-    }
-    //ler o arquivo de indices inteiro e trazer para a ram no vetor vetor_indices
-    REGISTRO_INDICE *vetor_indices = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*n_registros);
-    //set status e close arquivo de indices
-    fseek(indice,0,SEEK_SET);
-    status='1';
-    fwrite(&status,sizeof(char),1,indice);
-    fclose(indice);
-    indice.fclose();
 
-    int procurado[6];
-    char campo[20];
-    int n_registros;
-    int busca_total=0;
-    fseek(arquivo, 17, SEEK_SET);
-    fread(&n_registros, sizeof(int), 1, arquivo);
-    OT *regs= (long long*) malloc(sizeof(long long)*n_registros);
-    int *id_regs = (int*)malloc(sizeof(int)*n_registros);
+bool reader_delete_where(char *binario,char *indice,int n){
+    // Criando o arquivo de índices
+    reader_create_index(binario, indice);
+
+    //traz o arquivo de indices para a ram
+    VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices==NULL)
+       return 0;
+
+    FILE* arquivo = fopen(binario,"rb+");
+    if(!consistente(arquivo))return 0;  
+    set_status_arquivo(arquivo, '0');
+    
+    int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
+    char campo[20]; //variavel que vai receber o camp obuscado 
+    int busca_total=0;  //variavel para saber o numero de registros deletados
+
     for(int i = 0; i < n; i++){
         int params;
         scanf("%d",&params);
@@ -699,7 +574,10 @@ bool reader_delete_where(char *binario,char *indices,int n){
         // Resetando todos os campos como não procurados pelo usuário na busca
         for(int j=1;j<6;j++)procurado[j] = 0;
         REGISTRO registro_buscado;
-        // Recebendo as condições do usuário para cada parametro da busca atual
+        registro_buscado.tamNomeJog=0;
+        registro_buscado.tamNomeClube=0;
+        registro_buscado.tamNacionalidade=0;
+        //recebendo os parametros da busca para deletar
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
 
@@ -713,45 +591,54 @@ bool reader_delete_where(char *binario,char *indices,int n){
             }
             if(strcmp(campo,"nomeJogador") == 0) {
                 procurado[3]=1;
-                registro_buscado.nomeJogador = (char*)malloc(sizeof(char)*100);
+                registro_buscado.nomeJogador = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nomeJogador);
+                registro_buscado.tamNomeJog = get_tamanho_string(registro_buscado.nomeJogador);
             }
             if(strcmp(campo,"nacionalidade") == 0) {
                 procurado[4]=1;
-                registro_buscado.nacionalidade = (char*)malloc(sizeof(char)*100);
+                registro_buscado.nacionalidade = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nacionalidade);
+                registro_buscado.tamNacionalidade = get_tamanho_string(registro_buscado.nacionalidade);
             }
             if(strcmp(campo,"nomeClube") == 0) {
                 procurado[5]=1;
-                registro_buscado.nomeClube = (char*)malloc(sizeof(char)*100);
+                registro_buscado.nomeClube = (char*) malloc (sizeof(char)*100);
                 scan_quote_string(registro_buscado.nomeClube);
+                registro_buscado.tamNomeClube = get_tamanho_string(registro_buscado.nomeClube);
             }
         }
     
         if(procurado[1]==0){
-            //busca no arquivo principal e guarda os offsets ,o id e o tamanho dos registros encontrados;
-            int busca_atual = busca_para_remover(arquivo,registro_buscado,regs,id_regs,busca_total,procurado);
+            //busca no arquivo principal e remove
+            int busca_atual = busca_para_remover(arquivo,registro_buscado,procurado,vetor_indices);
             busca_total+=busca_atual;
         }
         else{
             int id=registro_buscado.id;
-            long long offset_removido;
+
             //faz a busca binaria no vetor_indices e guarda o resultado em offset_removido
-            bool ok = busca_binaria(id,0,n_registros-1,vetor_indices,&offset_removido);
-            if(ok){
+            int pos = indice_buscar(vetor_indices,id); //pos guarda a posição do registro no vetor de indices ou -1 caso nao tenha sido encontrado
+            REGISTROI x;
+            if(pos!=-1)x = indice_get_registroi_vetor(vetor_indices, pos); //Pega o registro na posição encontrada
+            long long offset_removido = x.byteOffset;
+
+            if(pos!=-1){ // remove o registro
                 fseek(arquivo,offset_removido,SEEK_SET);
                 char removido;
                 fread(&removido,sizeof(char),1,arquivo);
-                if(removido=='1')continue;
+                if(removido=='1')continue; // se o registro ja esta removido nao precisa fazer nada
                 fseek(arquivo,-1,SEEK_CUR);
                 removido='1';
                 fwrite(&removido,sizeof(char),1,arquivo);
                 int tamanho_reg_rem;
                 fread(&tamanho_reg_rem,sizeof(int),1,arquivo);
-                //adiciona no regs para remover depois
-                regs[busca_total].offsetReg = offset_removido;
-                id_regs[busca_total] = id;
-                regs[busca_total].tamanhoReg = tamanho_reg_rem;
+
+                //atualiza a lista de registros removidos
+                atualiza_lista(arquivo,offset_removido,tamanho_reg_rem);
+    
+                indice_remover(vetor_indices, id); //remove do vetor_indices
+
                 busca_total+=1;
             }
         }
@@ -759,124 +646,184 @@ bool reader_delete_where(char *binario,char *indices,int n){
         //dando free nos campos do registro buscado
         libera_registro(registro_buscado);
     }
-    //removendo no arquivo principal os registros encontrados nas buscas
+    //reescrever o cabecaçalho com o novo n_registros e n_reg_rem
+    CABECALHO* cabecalho =  cabecalho_from_arquivo(arquivo);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)-busca_total);
+    cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)+busca_total);
+    escreve_cabecalho(arquivo,cabecalho);
 
-    //Fazendo um novo vetor para colocar no arquivo de indices
-    REGISTRO_INDICE *vetor_apos_remocao = (REGISTRO_INDICE *) malloc (sizeof(REGISTRO_INDICE)*(n_registros-busca_total));
-    int ponteiro_vetor_apos_remocao=0;
-    int ponteiro_regs=0;
-    //quick sort no vetor id_regs
-    for(auto u:vetor_indices){
-        if(ponteiro_regs<busca_total)
-            if(u.id == id_regs[ponteiro_regs]){
-                ponteiro_regs++;
-                continue;
-            }
-        vetor_apos_remocao[ponteiro_vetor_apos_remocao] = u;
-        ponteiro_vetor_apos_remocao++;
-    }
-    //reescrever o arquivo de indices a partir do vetor vetor_apos_remocao
-    //quick sort em regs
-    //reorganizar a lista de removidos
-    atualiza_lista(arquivo,regs,busca_total);
-
-    //liberando memoria
-    free(regs);
-    free(id_regs);
-    free(vetor_indices);
-    free(vetor_apos_remocao);
-
-
+    //reescrever o arquivo de indices a partir do novo vetor
+    indice_reescrita(indice, vetor_indices);
+    indice_destruir(&vetor_indices);
     //fechando arquivo
-    fseek(arquivo,0,SEEK_SET);
-    status='1';
-    fwrite(&status,sizeof(char),1,arquivo);
+    set_status_arquivo(arquivo, '1');
     fclose(arquivo);
+
+    binarioNaTela(binario);
+    binarioNaTela(indice);
+
+    // Desalocando a memória e retornando
+    cabecalho_apagar(&cabecalho);
+    return true;
 }
 
-void inserir_arquivo_principal(FILE* arquivo,REGISTRO* regs,int qntd){
-    int reaproveitados=0;//variavel para guardar quantos registros ocuparam lugar de registros logicamente removidos
-    int ponteiro_regs=0;
-    fseek(arquivo,1,SEEK_SET);
-    int prox;
-    fread(&prox,sizeof(int),1,arquivo);
-    int offset_anterior = 1;
-    while(ponteiro_regs<qntd){
-        if(prox==-1){//inserir o resto no final do arquivo;
-            fseek(arquivo,0,SEEK_END);
-            for(int i=ponteiro_regs;i<qntd;i++)escreve_registro(regs[i]);
-            break;
+//insere o registro no arquivo principal e guarda o byte onde foi inserudo
+//retorna 1 se o arquivo foi cololocado em espaço de registro logicamente removido
+//retorna 0 caso contrario
+int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
+    int reaproveitados = 0;    // controla a qntd de registros reaproveitados pela estratégia best fit
+    long long proxRemovido;    // Topo da lista de registros lógicamente removidos
+    long long offset_anterior; // Ponteiro para o registro removido anterior na lista de removidos
+    long long proxOffsetLivre; // Próximo offset disponível para inserção ao fim do arquivo
+    int tamanho;               // Guarda o tamanho disponível em registros removidos
+    int guardar_tamanho;       // Auxiliar para guardar o tamanho original de um registro inserido com best fit
+    char lixo = '$';
+
+    // Lendo, do binário, topo e o próximo byteoffest disponível
+    fseek(arquivo, 1, SEEK_SET);
+    fread(&proxRemovido, sizeof(long long), 1, arquivo);
+    fread(&proxOffsetLivre, sizeof(long long), 1, arquivo);
+    offset_anterior = 1;
+
+    // Percorrendo a lista de registros removidos para tentar realizar a estratégia
+    // best fit
+    while(proxRemovido != -1){
+        // obtendo o tamanho do removido atual e atualizando o ponteiro para o
+        // próximo
+        fseek(arquivo, proxRemovido+1, SEEK_SET);
+        fread(&tamanho, sizeof(int), 1, arquivo);
+        fread(&proxRemovido, sizeof(long long), 1, arquivo);
+
+        // se o tamanho couber o arquivo a ser inserido, então insira e retorne
+        if(tamanho >= reg->tamanhoRegistro){
+            reaproveitados = 1;
+
+            fseek(arquivo,-13,SEEK_CUR);
+            guardar_tamanho = reg->tamanhoRegistro;
+            reg->tamanhoRegistro = tamanho;
+            *byte = ftell(arquivo);
+            escreve_registro(arquivo,reg);
+
+            for(int i = 0; i < tamanho - guardar_tamanho; i++) {
+                fwrite(&lixo, sizeof(char), 1, arquivo);
+            }
+            //coloca o anterior para apontar para o proximo
+            fseek(arquivo,offset_anterior,SEEK_SET);
+            fwrite(&proxRemovido,sizeof(long long),1,arquivo);
+            return reaproveitados;
         }
+
+        //caso contrario continue o loop e guarde o offset;
         else{
-            fseek(arquivo,prox+1,SEEK_SET);
-            int tamanho;
-            fread(&tamanho,sizeof(int),1,arquivo);
-            fread(&prox,sizeof(int),1,arquivo);
-            if(tamanho>=regs[ponteiro_regs].tamanhoRegistro){
-                reaproveitados++;
-                fseek(arquivo,-12,SEEK_CUR);
-                regs[ponteiro_regs].tamanhoRegistro = tamanho;
-                escreve_registro(regs[ponteiro_regs]);
-                char lixo = '$';
-                fwrite(&lixo,sizeof(char),tamanho-regs[ponteiro_regs].tamanhoRegistro,arquivo);
-                ponteiro_regs++;
-                fseek(arquivo,offset_anterior,SEEK_SET);
-                fwrite(&prox,sizeof(int),1,arquivo);
-            }
-            else{
-                offset_anterior = ftell(arquivo) - 8;
-            }
+            offset_anterior = ftell(arquivo) - 8;
         }
     }
-    //atualizando os valores de n_registros e n_registros removidos no cabecalho
-    fseek(arquivo,17,SEEK_SET);
-    int n_reg;
-    fread(&n_reg,sizeof(int),1,arquivo);
-    n_reg+=qntd;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_reg,sizeof(int),1,arquivo);
-    fread(&n_reg,sizeof(int),1,arquivo);
-    n_reg-=reaproveitados;
-    fseek(arquivo,-4,SEEK_CUR);
-    fwrite(&n_reg,sizeof(int),1,arquivo);
+
+    // Caso não haja nenhum removido reaproveitados,; insira no fim
+    fseek(arquivo,0,SEEK_END);
+    *byte = ftell(arquivo);
+    escreve_registro(arquivo,reg);
+
+    // Atualizando o próximo byteoffset
+    proxOffsetLivre += reg->tamanhoRegistro;
+    fseek(arquivo, 9, SEEK_SET);
+    fwrite(&proxOffsetLivre, sizeof(long long), 1, arquivo);
+    return reaproveitados;
 }
 
-int get_tamanho_string(char *string){
-    int ct=0;
-    while(string[ct]!='\0'){
-        ct++;
-    }
-    return ct;
-}
-void reader_insert_into(char *binario,char *indices,int n){
-    REGISTRO* regs=(REGISTRO*)malloc(sizeof(REGISTRO)*n);
+bool reader_insert_into(char *binario,char *indice,int n){
+    FILE* arquivo;               // Ponteiro para os arquivos
+    char status;                 // Variável para armazenar o status, usada em verificações
+    VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
+    int reaproveitados = 0;      // Controla a qntd de registros reaproveitados pela estratégia best fit
+    REGISTRO r;                  // Guarda os novos registros a serem inseridos
+    char strAux[10];             // Auxiliar para tratar registros fixos com valor NULO
+    long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi
+    int regInvalido = 0;         // Guarda o número de registros invalidos que não foram inseridos
+
+    // Criando o arquivo de índices
+    reader_create_index(binario, indice);
+
+    // Carregando o registro de índices na memória
+    vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)
+        return false;
+    
+    // Abrindo e verificando a consistência do arquivo binário principal
+    arquivo = fopen(binario,"rb+");
+    if(!consistente(arquivo))return false;
+
+    // Setando o status para inconsistente como medida preventiva
+    set_status_arquivo(arquivo, '0');
+
+    // Coletando os dados e inserindo nos binários n vezes
     for(int i=0;i<n;i++){
-        scanf("%d %d",&regs[i].id,&regs[i].idade);
-        regs[i].nomeJogador = (char*) malloc (sizeof(char)*100);
-        regs[i].nacionalidade = (char*) malloc(sizeof(char)*100);
-        regs[i].nomeClube = (char*) malloc(sizeof(char)*100);
-        regs[i].removido = '0';
-        regs[i].prox = '-1';
-        scan_quote_string(regs[i].nomeJogador);
-        scan_quote_string(regs[i].nacionalidade);
-        scan_quote_string(regis[i].nomeClube);
-        regs[i].tamNomeJog = get_tamanho_string(regs[i].nomeJogador);
-        regs[i].tamNacionalidade = get_tamanho_string(regs[i].nacionalidade);
-        regs[i].tamNomeClube = get_tamanho_string(regs[i].nomeClube);
-        regs[i].tamanhoRegistro = 33 + regs[i].tamNomeJog + regs[i].tamNacionalidade + regs[i].tamNomeClube;
+        // Lendo os campos fixos
+        scan_quote_string(strAux);
+        if(strcmp(strAux, "") == 0) {
+            regInvalido++;
+            continue; // id nulo torna o registro inválido
+        }
+        else
+            r.id = strToInt(strAux, get_tamanho_string(strAux));
 
-    }
-    FILE* arquivo = fopen(binario,"wb+");
-    char status;
-    fread(&status,sizeof(char),1,arquivo);
-    if(status=='0'){
-        printf("Falha no processamento do arquivo.");
-        return;
-    }
-    status='1';
-    fseek(arquivo,-1,SEEK_CUR);
-    fwrite(&status,sizeof(char),1,arquivo);
-    inserir_arquivo_principal(arquivo,regs,n);
-    //
+        scan_quote_string(strAux);
+        if(strcmp(strAux, "") == 0)
+            r.idade = -1;
+        else
+            r.idade = strToInt(strAux, 2);
 
+        // Lendo os campos de tamanho variável
+        r.nomeJogador = (char*) malloc (sizeof(char)*100);
+        r.nacionalidade = (char*) malloc(sizeof(char)*100);
+        r.nomeClube = (char*) malloc(sizeof(char)*100);
+        r.removido = '0';
+        r.prox = -1;
+        scan_quote_string(r.nomeJogador);
+        scan_quote_string(r.nacionalidade);
+        scan_quote_string(r.nomeClube);
+        r.tamNomeJog = get_tamanho_string(r.nomeJogador);
+        if(r.tamNomeJog == 0)
+            free(r.nomeJogador);
+
+        r.tamNacionalidade = get_tamanho_string(r.nacionalidade);
+        if(r.tamNacionalidade == 0)
+            free(r.nacionalidade);
+        
+        r.tamNomeClube = get_tamanho_string(r.nomeClube);
+        if(r.tamNomeClube == 0)
+            free(r.nomeClube);
+
+        r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
+
+        // inserindo no arquivo principal e guardando o byte que foi inserido
+        reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
+
+        //inserindo no vetor de índices
+        indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
+        libera_registro(r);
+    }
+
+    //atualizando  o n_registros e o n_registros_removidos do arquivo
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+n - regInvalido);
+    cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)-reaproveitados);
+    escreve_cabecalho(arquivo,cabecalho);
+    cabecalho_apagar(&cabecalho);
+
+    // Reescrevendo o arquivo de índices
+    indice_reescrita(indice, vetor_indices);
+
+    // Voltando o status para 1
+    set_status_arquivo(arquivo, '1');
+    fclose(arquivo);
+
+    // Chamando binario na tela para os arquivos
+    binarioNaTela(binario);
+    binarioNaTela(indice);
+
+    // Desalocando registros e retornando
+    cabecalho_apagar(&cabecalho);
+    indice_destruir(&vetor_indices);
+    return true;
 }

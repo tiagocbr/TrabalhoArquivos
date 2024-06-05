@@ -26,6 +26,23 @@ CABECALHO *cabecalho_criar(void) {
     return c;
 }
 
+//Carrega o cabeçalho a partir do arquivo
+CABECALHO* cabecalho_from_arquivo(FILE* arquivo){
+    CABECALHO *c =  cabecalho_criar();
+    char status;
+    long long topo;
+    long long proxByteOffset;
+    int nroRegArq;
+    int nroRegRem;
+    fseek(arquivo,0,SEEK_SET);
+    fread(&c->status,sizeof(char),1,arquivo);
+    fread(&c->topo,sizeof(long long),1,arquivo);
+    fread(&c->proxByteOffset,sizeof(long long),1,arquivo);
+    fread(&c->nroRegArq,sizeof(int),1,arquivo);
+    fread(&c->nroRegRem,sizeof(int),1,arquivo);
+    return c;
+}
+
 // FUNÇÕES QUE RETORNAM O VALOR DE UM CAMPO DO REGISTRO ("GET")
 // Retorna x caso c == NULL;
 char cabecalho_get_status(CABECALHO *c) {
@@ -61,7 +78,7 @@ bool cabecalho_set_status(CABECALHO *c) {
     return false;
 }
 
-bool cabecalho_set_topo(CABECALHO *c, int novoTopo) {
+bool cabecalho_set_topo(CABECALHO *c, long long novoTopo) {
     if(c != NULL) {
         c->topo = novoTopo;
         return true;
@@ -69,7 +86,7 @@ bool cabecalho_set_topo(CABECALHO *c, int novoTopo) {
     return false;
 }
 
-bool cabecalho_set_proxOffset(CABECALHO *c, int novoOffset) {
+bool cabecalho_set_proxOffset(CABECALHO *c, long long novoOffset) {
     if(c != NULL) {
         c->proxByteOffset = novoOffset;
         return true;
@@ -102,3 +119,27 @@ bool cabecalho_apagar(CABECALHO **c) {
     }
     return false;
 }
+
+// Função auxiliar que escreve no arquivo binário o registro de cabeçalho
+void escreve_cabecalho(FILE *arquivo, CABECALHO *cabecalho) {
+    fseek(arquivo, 0, SEEK_SET);
+
+    if (cabecalho != NULL) {
+        // Passando os dados do TAD para variáveis locais
+        char status=cabecalho_get_status(cabecalho);
+        long long topo =  cabecalho_get_topo(cabecalho);
+        long long proxByteOffset = cabecalho_get_proxOffset(cabecalho);
+        int nroRegArq = cabecalho_get_nroRegArq(cabecalho);
+        int nroRegRem = cabecalho_get_nroRegRem(cabecalho);
+
+        // Escrevendo o cabeçalho no arquivo
+        fwrite(&status, sizeof(char),1,arquivo);
+        fwrite(&topo, sizeof(long long),1,arquivo);
+        fwrite(&proxByteOffset, sizeof(long long),1,arquivo);
+        fwrite(&nroRegArq, sizeof(int),1,arquivo);
+        fwrite(&nroRegRem, sizeof(int),1,arquivo);
+    
+    }
+}
+
+

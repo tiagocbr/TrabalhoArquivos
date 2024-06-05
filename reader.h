@@ -23,10 +23,22 @@
     // de buscas com condições próprias
     bool reader_select_where(char * binario, int qntd);
 
+    // Funcionalidade 4
+    // Cria o arquivo de índice simples de um binário pré-existente
+    bool reader_create_index(char *binario, char *indice);
+
     // Funcionalidade 5
     // Deleta um arquivo logicamente no arquivo principal e fisicamente no arquivo de índices
     // Esta funcionalidade será repetida n vezes
     bool reader_delete_where(char *binario ,char *indices,int n);
+
+    // Funcionalidade 6
+    // Insere novos registros no arquivo principal e no arquivo de índices
+    // A inserção usa a estratégia best fit, buscando reaproveitar registros lógicamente
+    // removidos no arquivo principal
+    bool reader_insert_into(char* binario,char* indice,int n); 
+
+    void test();
 
 
 #endif

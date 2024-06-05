@@ -14,7 +14,7 @@ int main() {
     char arqEntrada[30];  // Armazena o nome do arquivo de entrada
     char arqSaida[30];    // Armazena o nome do arquivo de saída
     int n = 0;            // Usada para informar a qntd de buscas de algumas funcionalidades
-    bool res=true;             // Armzaena os resultados das funcionalidades booleanas
+    bool res=true;        // Armzaena os resultados das funcionalidades booleanas
 
     scanf("%d", &opCode);
     switch(opCode) {
@@ -55,14 +55,6 @@ int main() {
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
-
-        case 665:
-            {
-                int *vet = (int *) malloc(5 * sizeof(int));
-                free(vet);
-                vet = NULL;
-            break;
-            }
     }
 
     if(!res)

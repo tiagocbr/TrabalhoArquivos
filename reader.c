@@ -827,15 +827,3 @@ bool reader_insert_into(char *binario,char *indice,int n){
     indice_destruir(&vetor_indices);
     return true;
 }
-
-void test() {
-    REGISTRO r;
-            r.tamNomeJog = 1;
-            r.tamNacionalidade=0;
-            r.tamNomeClube = 0;
-            r.nomeJogador = (char*)malloc(sizeof(char)*2);
-            r.nomeJogador = NULL;
-            //libera_registro(r);
-            
-            return;
-}

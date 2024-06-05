@@ -541,6 +541,7 @@ int busca_para_remover(FILE* arquivo,REGISTRO registro_buscado,int *procurado,VE
 }
 
 bool reader_delete_where(char *binario,char *indice,int n){
+    //cria o arquivo de indices se nao existir
     reader_create_index(binario,indice);
     //traz o arquivo de indices para a ram
     VETREGISTROI *vetor_indices = indice_carregamento(indice, binario);
@@ -553,9 +554,9 @@ bool reader_delete_where(char *binario,char *indice,int n){
     char status='0';
     fwrite(&status,sizeof(char),1,arquivo);
     
-    int procurado[6];
-    char campo[20];
-    int busca_total=0;
+    int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
+    char campo[20]; //variavel que vai receber o camp obuscado 
+    int busca_total=0;  //variavel para saber o numero de registros deletados
 
     for(int i = 0; i < n; i++){
         int params;

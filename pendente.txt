@@ -6,6 +6,6 @@
 --> Criar a funcao  NO criar_no(char* indices, int RRN_NO)
     Essa função deve abrir o arquivo de indices,e trazer para a RAM o NO correspondente a linha RRN_NO
     Nao há necessidade de usar malloc nessa função, apenas retorne a variavel NO, sem ponteiros
---> Criar a funcao long long get_prox_RRN(char* indices) e void set_prox_RRN(char* indices, long long novo_RRN);
+--> Criar a funcao int get_prox_RRN(char* indices) e void set_prox_RRN(char* indices, int novo_RRN);
     get_prox_RRN deve abrir o arquivo de indices e retornar o proximo RRN disponivel
     set_prox_RRN seta o proximo RRN disponivel para novo_RRN

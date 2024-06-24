@@ -29,8 +29,8 @@ struct arvore_b{
 void indices_escreve_cabecalho(ARVORE_B *arvore, FILE *indices) {
     // Setando as variáveis do cabeçalho inicial
     arvore->status = '1';
-    arvore->RRN_raiz = 0;
-    arvore->proxRRN = 1;
+    arvore->RRN_raiz = -1;
+    arvore->proxRRN = 0;
     arvore->nroChaves = 0;
     const char *lixo = "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"; 
 
@@ -106,19 +106,6 @@ ARVORE_B* arvore_criar(char* indices){
     if(arquivo == NULL)
         return NULL;
     indices_escreve_cabecalho(arvore, arquivo);
-
-    // Criando o nó raiz
-    NO raiz;
-    raiz.altura_no = 0;
-    raiz.n_chaves = 0;
-    for(int i=0;i<4;i++){
-        raiz.RRN_filhos[i]=-1;
-    }
-     for (int i = 0; i < 3; i++) {
-        raiz.elementos[i].chave = -1;
-        raiz.elementos[i].offset = -1;
-    }
-    indices_escreve_registro(arquivo,raiz,0);
 
     strcpy(arvore->indices,indices);
     fclose(arquivo);
@@ -304,19 +291,24 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
 }
 
 elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVORE_B* arvore){
-    NO no = criar_no(indices,RRN_NO);
 
-    if(no.n_chaves==0){ //arvore vazia, inserção do primeiro elemento
+    if(arvore->nroChaves==0){ //arvore vazia, inserção do primeiro elemento
         elem new_elem;
         new_elem.chave = chave;
         new_elem.offset = offset;
-        no.elementos[0] = new_elem;
-        no.n_chaves++;
-        indices_escreve_registro(indices,no,RRN_NO);
+        NO new_no;
+        new_no.altura_no = 0;
+        new_no.n_chaves = 1;
+        for(int i=0;i<4;i++)new_no.RRN_filhos[i]=-1;
+        new_no.elementos[0]=new_elem;
+        indices_escreve_registro(indices,new_no,0);
         ajustaCabecalho(arvore, indices, 0, 0);
         elem empty_elem = { -1, -1 }; // Indicating no element to return
         return empty_elem;
     }
+
+
+    NO no = criar_no(indices,RRN_NO);
 
     elem* elementos = no.elementos;
     int* RRN_filhos = no.RRN_filhos;

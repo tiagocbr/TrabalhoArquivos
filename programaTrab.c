@@ -59,6 +59,30 @@ int main() {
             res = create_index_arvore_B(arqEntrada,arqSaida);
             break;
             
+
+        case 8:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            res = reader_select_from_id(arqEntrada, arqSaida, n);
+            break;
+
+        case 9:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            res = funcionalidade_9(arqEntrada, arqSaida, n);
+            break;
+
+        case 10:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            res = reader_insert_into_bTree(arqEntrada, arqSaida, n);
+            break;
     }
 
     if(!res)

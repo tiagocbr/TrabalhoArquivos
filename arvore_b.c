@@ -92,8 +92,6 @@ bool indices_escreve_registro(FILE *indices, NO no, int RRN_NO) {
         fwrite(&no.RRN_filhos[i], sizeof(int), 1, indices);
     }
 
-    //ajustarCabecalho(arvore, indices, casoDaInsercao);
-
     return true;
 }
 
@@ -109,6 +107,28 @@ ARVORE_B* arvore_criar(char* indices){
 
     strcpy(arvore->indices,indices);
     fclose(arquivo);
+    return arvore;
+}
+
+// Função auxiliar que, dado um arquivo de índices aberto e consistente, intancía em
+// memória o cabeçalho do arquivo para utilização nas funcionalidades
+ARVORE_B *arvore_carregar_cabecalho(FILE *arquivo, char *nomeArquivo) {
+    ARVORE_B *arvore;
+
+    // Voltando o ponteiro para o início, se necessário
+    if(ftell(arquivo) != 0)
+        fseek(arquivo, 0, SEEK_SET);
+
+    // Alocando memória para a árvore
+    arvore = (ARVORE_B *) malloc(sizeof(ARVORE_B));
+    if(arvore == NULL)
+        return NULL;
+
+    fread(&arvore->status, sizeof(char), 1, arquivo);
+    fread(&arvore->RRN_raiz, sizeof(int), 1, arquivo);
+    fread(&arvore->proxRRN, sizeof(int), 1, arquivo);
+    fread(&arvore->nroChaves, sizeof(int), 1, arquivo);
+    strcpy(arvore->indices, nomeArquivo);
     return arvore;
 }
 
@@ -193,6 +213,15 @@ void set_prox_RRN(ARVORE_B *arvore, int novoRRN) {
     if(arvore != NULL)
         arvore->proxRRN = novoRRN;
     return;
+}
+
+// Função auxiliar que muda o status do cabeçalho, para quando o arquivo é aberto para escrita
+void set_status_cabecalho(ARVORE_B *arvore, FILE *indices, char newStatus) {
+    arvore->status = newStatus;
+    
+    if(ftell(indices) != 0)
+        fseek(indices, 0, SEEK_SET);
+    fwrite(&newStatus, sizeof(char), 1, indices);
 }
 
 elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,FILE* indices){ //insere o elemento e retorna o elemento que vai subir do split, caso haja
@@ -347,10 +376,13 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
 
 bool arvore_inserir(ARVORE_B* arvore,int chave,ll offset){
     FILE* arquivo = fopen(arvore->indices,"rb+");
-    if(!consistente(arquivo))
+    if(!consistente(arquivo) || arvore == NULL)
         return false;
 
+    set_status_cabecalho(arvore, arquivo, '0');
     arvore_inserir_recursivo(arvore->RRN_raiz,chave, offset,arquivo, arvore);
+
+    set_status_cabecalho(arvore, arquivo, '1');
     fclose(arquivo);
     return true;
 }

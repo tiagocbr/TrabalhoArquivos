@@ -8,7 +8,8 @@
     typedef long long ll;
     typedef struct arvore_b ARVORE_B;
 
-    ARVORE_B* arvore_criar();
+    ARVORE_B* arvore_criar(char *indices);
+    ARVORE_B *arvore_carregar_cabecalho(FILE *indices, char *nomeArquivo);
     void arvore_destruir(ARVORE_B** arvore);
 
     //retorna o byteOffSet do elemento encontrado, ou -1 caso nao tenha sido encontrado

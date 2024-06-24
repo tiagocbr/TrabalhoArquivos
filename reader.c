@@ -732,23 +732,15 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
     return reaproveitados;
 }
 
-bool reader_insert_into(char *binario,char *indice,int n){
-    FILE* arquivo;               // Ponteiro para os arquivos
-    char status;                 // Variável para armazenar o status, usada em verificações
-    VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
+// Função que realiza novas inserções no arquivo principal, retornando o que deve
+// ser inserido em um arquivo de índices (tando índice simples como árvore B)
+bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices){
+    FILE* arquivo;               // Ponteiro para o arquivo
     int reaproveitados = 0;      // Controla a qntd de registros reaproveitados pela estratégia best fit
     REGISTRO r;                  // Guarda os novos registros a serem inseridos
     char strAux[10];             // Auxiliar para tratar registros fixos com valor NULO
     long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi
     int regInvalido = 0;         // Guarda o número de registros invalidos que não foram inseridos
-
-    // Criando o arquivo de índices
-    reader_create_index(binario, indice);
-
-    // Carregando o registro de índices na memória
-    vetor_indices = indice_carregamento(indice, binario);
-    if(vetor_indices == NULL)
-        return false;
     
     // Abrindo e verificando a consistência do arquivo binário principal
     arquivo = fopen(binario,"rb+");
@@ -797,10 +789,8 @@ bool reader_insert_into(char *binario,char *indice,int n){
 
         r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
 
-        // inserindo no arquivo principal e guardando o byte que foi inserido
+        // inserindo no arquivo principal e guardando o byte que foi inserido para o vetor de índices
         reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
-
-        //inserindo no vetor de índices
         indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
         libera_registro(r);
     }
@@ -812,20 +802,132 @@ bool reader_insert_into(char *binario,char *indice,int n){
     escreve_cabecalho(arquivo,cabecalho);
     cabecalho_apagar(&cabecalho);
 
-    // Reescrevendo o arquivo de índices
-    indice_reescrita(indice, vetor_indices);
-
     // Voltando o status para 1
     set_status_arquivo(arquivo, '1');
     fclose(arquivo);
 
+    // Desalocando registros e retornando
+    cabecalho_apagar(&cabecalho);
+    return true;
+}
+
+bool reader_insert_into(char *binario, char *indice, int n) {
+    VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
+    bool res;
+
+    // Criando o arquivo de índices
+    reader_create_index(binario, indice);
+    vetor_indices = indice_carregamento(indice, binario);
+    if(vetor_indices == NULL)
+        return false;
+
+    // Chamando a função de inserção
+    res = reader_insert(binario, n, vetor_indices);
+    if(!res) {
+        indice_destruir(&vetor_indices);
+        return res;
+    }
+
+    // Reescrevendo o arquivo de índices
+    indice_reescrita(indice, vetor_indices);
+    indice_destruir(&vetor_indices);
+
     // Chamando binario na tela para os arquivos
     binarioNaTela(binario);
     binarioNaTela(indice);
+    return true;
+}
 
-    // Desalocando registros e retornando
-    cabecalho_apagar(&cabecalho);
-    indice_destruir(&vetor_indices);
+// Função auxiliar que, dado um arquivo aberto e consistente e um offset, retorna 
+// o REGISTRO referente a ele
+REGISTRO get_registro_offset(FILE *binario, long long offset) {
+    REGISTRO r;
+
+    fseek(binario, offset, SEEK_SET);
+    r = ler_registro_binario(binario);
+    return r;
+}
+
+bool reader_select_from_id(char *binario, char *indice, int n) {
+    REGISTRO r;
+    FILE *arqBinario;
+    FILE *arqIndice;
+    ARVORE_B *arvore;
+    long long offSetBuscado;
+    int chaveBuscada;
+
+    // Abrindo ambos arquivos para leitura
+    arqBinario = fopen(binario, "rb");
+    if(!consistente(arqBinario))
+        return false;
+
+    // Criando o arquivo de índices para a busca
+    // CHAMAR FUNCIONALIDADE 7
+    arqIndice = fopen(indice, "rb");
+    if(!consistente(arqIndice))
+        return false;
+    
+    arvore = arvore_carregar_cabecalho(arqIndice, indice);
+    if(arvore == NULL)
+        return false;
+
+    // Loop para as buscas
+    for(int i = 0; i < n; i++) {
+        printf("Busca %d\n\n", i + 1);
+        scanf("id %d", &chaveBuscada);
+
+        offSetBuscado = arvore_buscar(arvore, chaveBuscada);
+        if(offSetBuscado != -1) {
+            r = get_registro_offset(arqBinario, offSetBuscado);
+            imprime_registro(r);
+        }
+        else
+            printf("Registro inexistente\n");
+    }
+    return true;
+}
+
+bool reader_insert_into_bTree(char *binario, char *indice, int n) {
+    VETREGISTROI *registrosi;    // Vetor dos registros a serem adcionados na árvore b
+    REGISTROI regi;              // Auxiliar que recebe um regsitroi do vetor
+    FILE *arqIndice;
+    ARVORE_B *arvore;
+    bool res;
+
+    // Criando o árquivo de índices e instanciando o cabeçalho na memória para a inserção
+    // CHAMAR FUNCIONALIDADE 7
+    arqIndice = fopen(indice, "rb+");
+    if(!consistente(arqIndice))
+        return false;
+    
+    arvore = arvore_carregar_cabecalho(arqIndice, indice);
+    if(arvore == NULL)
+        return false;
+
+    // Instanciando um novo VETREGISTROI com o número de elementos a serem inseridos
+    registrosi = indice_criar_vetor(n);
+    if(registrosi == NULL)
+        return false;
+
+    // Chamando a função de inserção
+    res = reader_insert(binario, n, registrosi);
+    if(!res) {
+        indice_destruir(&registrosi);
+        return res;
+    }
+
+    // Reescrevendo o arquivo de índices
+    for(int i = 0; i < n; i++) {
+        regi = indice_get_registroi_vetor(registrosi, i);
+        res = arvore_inserir(arvore, regi.id, regi.byteOffset);
+    }
+    indice_destruir(&registrosi);
+    if(!res)
+        return res;
+
+    // Chamando binario na tela para os arquivos
+    binarioNaTela(binario);
+    binarioNaTela(indice);
     return true;
 }
 

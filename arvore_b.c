@@ -129,6 +129,14 @@ ARVORE_B *arvore_carregar_cabecalho(FILE *arquivo, char *nomeArquivo) {
     fread(&arvore->proxRRN, sizeof(int), 1, arquivo);
     fread(&arvore->nroChaves, sizeof(int), 1, arquivo);
     strcpy(arvore->indices, nomeArquivo);
+
+    /*
+    printf("status: %c\n", arvore->status);
+    printf("rrnRaiz: %d\n", arvore->RRN_raiz);
+    printf("proxRRn: %d\n", arvore->proxRRN);
+    printf("nroChaves: %d\n", arvore->nroChaves);
+    printf("indices: %s\n\n", arvore->indices);
+    */
     return arvore;
 }
 
@@ -152,7 +160,9 @@ NO criar_no(FILE *indices, int RRN_NO) {
     
     // Lendo todos as chaves (elementos) do nó autal
     for(int i = 0; i < 3; i++) {
-        fread(&novoNo.elementos[i], sizeof(elem), 1, indices);
+        fread(&novoNo.elementos[i].chave, sizeof(int), 1, indices);
+        fread(&novoNo.elementos[i].offset, sizeof(ll), 1, indices);
+        //fread(&novoNo.elementos[i], sizeof(elem), 1, indices);
     }
 
     // Lendo todos os rrns para os filhos do nó atual
@@ -390,4 +400,27 @@ bool arvore_inserir(ARVORE_B* arvore,int chave,ll offset){
     fclose(arquivo);
     if(res.chave==-1)return false;
     return true;
+}
+
+
+// DEBUGS
+void imprimeNO(NO no) {
+    printf("altura: %d\n", no.altura_no);
+    printf("n_chaves: %d\n", no.n_chaves);
+    
+    printf("RRN_FILHOS:\n");
+    for(int i = 0; i < 4; i++) {
+        printf("%d ", no.RRN_filhos[i]);
+    }
+    printf("\n\n");
+}
+
+void imprimeCabecalho(ARVORE_B *arv) {
+    if(arv != NULL) {
+        printf("status: %c\n", arv->status);
+        printf("rrnRaiz: %d\n", arv->RRN_raiz);
+        printf("proxRRn: %d\n", arv->proxRRN);
+        printf("nroChaves: %d\n", arv->nroChaves);
+        printf("indices: %s\n\n", arv->indices);
+    }
 }

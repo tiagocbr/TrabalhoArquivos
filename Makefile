@@ -2,7 +2,7 @@ all: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o program
 	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o arvore_b.o -Wall -std=c99 -o programaTrab
 
 run: all
-	./programaTrab
+	./programaTrab > test.txt
 
 arvore_b.o: arvore_b.c
 	gcc -c arvore_b.c -o arvore_b.o
@@ -30,7 +30,8 @@ eraseBin:
 	rm *.bin
 
 debug7:
-	cp arquivos\ 2/Entrada/binario10.bin .
+	cp arquivos/files/binario8.bin .
+	cp arquivos/files/indice8.bin .
 
 allValgrind: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o programaTrab.o
 	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o -g -Wall -std=c99 -o programaTrab

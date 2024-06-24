@@ -874,7 +874,7 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
     // Loop para as buscas
     for(int i = 0; i < n; i++) {
         printf("Busca %d\n\n", i + 1);
-        scanf("%d", &chaveBuscada);
+        scanf("id %d", &chaveBuscada);
 
         offSetBuscado = arvore_buscar(arvore, chaveBuscada);
         if(offSetBuscado != -1) {

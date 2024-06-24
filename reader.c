@@ -977,7 +977,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
 bool funcionalidade_9(char* binario,char* indice, int n){
     FILE* arq = fopen(indice,"rb");
     // Criando o arquivo de índices
-    ARVORE_B* arvore = arvore_carregar_cabecalho(arq);
+    ARVORE_B* arvore = arvore_carregar_cabecalho(arq, indice);
 
 
     FILE* arquivo = fopen(binario,"rb");

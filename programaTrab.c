@@ -53,6 +53,12 @@ int main() {
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
+        case 7:
+            scanf(" %s", arqEntrada);
+            scanf(" %s",arqSaida);
+            res = create_index_arvore_B(arqEntrada,arqSaida);
+            break;
+            
 
         case 8:
             scanf(" %s", arqEntrada);
@@ -60,6 +66,14 @@ int main() {
             scanf(" %d", &n);
 
             res = reader_select_from_id(arqEntrada, arqSaida, n);
+            break;
+
+        case 9:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            res = funcionalidade_9(arqEntrada, arqSaida, n);
             break;
 
         case 10:

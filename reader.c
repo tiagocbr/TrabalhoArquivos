@@ -937,3 +937,127 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
     binarioNaTela(indice);
     return true;
 }
+
+bool create_index_arvore_B(char *binario,char* indice ){
+    long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
+    REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
+    int total;                 // Guarda o número total de registros no arquivo de dados
+
+    // Abrindo e verificando o arquivo binário para leitura
+    FILE *arquivo = fopen(binario, "rb");
+    if(!consistente(arquivo)) return false;
+    CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
+
+    total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
+
+    ARVORE_B* arvore = arvore_criar(indice);
+    bool res=true;
+    // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
+    while(total--) {
+
+        regDados = ler_registro_binario(arquivo);
+        if(regDados.removido != '1') {
+            res = arvore_inserir(arvore,regDados.id,offsetReg);
+        }
+
+        // Atualizando o offset para o próximo registro
+        offsetReg += (long long) regDados.tamanhoRegistro;
+        libera_registro(regDados);
+    }
+
+    // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
+    fclose(arquivo);
+
+    // Desalocando a memória e retorno da funcionalidade
+    cabecalho_apagar(&cabecalho);
+    binarioNaTela(indice);
+    return res;
+}
+
+bool funcionalidade_9(char* binario,char* indice, int n){
+    FILE* arq = fopen(indice,"rb");
+    // Criando o arquivo de índices
+    ARVORE_B* arvore = arvore_carregar_cabecalho(arq);
+
+
+    FILE* arquivo = fopen(binario,"rb");
+    if(!consistente(arquivo))return 0;  
+    set_status_arquivo(arquivo, '0');
+    
+    int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
+    char campo[20]; //variavel que vai receber o camp obuscado 
+    int busca_total=0;  //variavel para saber o numero de registros deletados
+
+    for(int i = 0; i < n; i++){
+        printf("Busca %d\n\n", i + 1);
+
+        int params;
+        scanf("%d",&params);
+
+        // Resetando todos os campos como não procurados pelo usuário na busca
+        for(int j=1;j<6;j++)procurado[j] = 0;
+        REGISTRO registro_buscado;
+        registro_buscado.tamNomeJog=0;
+        registro_buscado.tamNomeClube=0;
+        registro_buscado.tamNacionalidade=0;
+        //recebendo os parametros da busca para deletar
+        for(int j=0;j<params;j++){
+            scanf(" %s",campo);
+
+            if(strcmp(campo,"id") == 0) {
+                procurado[1]=1;
+                scanf("%d",&registro_buscado.id);
+            }
+            if(strcmp(campo,"idade") == 0) {
+                procurado[2]=1;
+                scanf("%d",&registro_buscado.idade);
+            }
+            if(strcmp(campo,"nomeJogador") == 0) {
+                procurado[3]=1;
+                registro_buscado.nomeJogador = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeJogador);
+                registro_buscado.tamNomeJog = get_tamanho_string(registro_buscado.nomeJogador);
+            }
+            if(strcmp(campo,"nacionalidade") == 0) {
+                procurado[4]=1;
+                registro_buscado.nacionalidade = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nacionalidade);
+                registro_buscado.tamNacionalidade = get_tamanho_string(registro_buscado.nacionalidade);
+            }
+            if(strcmp(campo,"nomeClube") == 0) {
+                procurado[5]=1;
+                registro_buscado.nomeClube = (char*) malloc (sizeof(char)*100);
+                scan_quote_string(registro_buscado.nomeClube);
+                registro_buscado.tamNomeClube = get_tamanho_string(registro_buscado.nomeClube);
+            }
+        }
+    
+        if(procurado[1]==0){
+            busca_no_arqDados(arquivo,registro_buscado,procurado);
+        }
+        else{
+            int id=registro_buscado.id;
+            long long offset_encontrado = arvore_buscar(arvore,id);
+
+            if(offset_encontrado!=-1){ // printa o registro
+               fseek(arquivo,offset_encontrado,SEEK_SET);
+               REGISTRO reg = ler_registro_binario(arquivo);
+               imprime_registro(reg);
+               libera_registro(reg);
+            }
+            else{
+                printf("Registro inexistente.\n");
+            }
+        }
+
+        //dando free nos campos do registro buscado
+        libera_registro(registro_buscado);
+    }
+  
+    //fechando arquivo
+    set_status_arquivo(arquivo, '1');
+    fclose(arquivo);
+
+    return true;
+}
+

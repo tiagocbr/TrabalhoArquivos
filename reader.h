@@ -38,7 +38,16 @@
     // removidos no arquivo principal
     bool reader_insert_into(char* binario,char* indice,int n); 
 
-    void test();
+
+    // Funcionalidade 8
+    // Busca elementos do arquivo principal a partir do id e um arquivo de índices
+    // criado com uma árvore b
+    bool reader_select_from_id(char *binario, char *indice, int n);
+
+    // Funcionalidade 10
+    // Insere um novo elemento no arquivo principal e no arquivo de índices com 
+    // árvore b
+    bool reader_insert_into_bTree(char *binario, char *indice, int n);
 
 
 #endif

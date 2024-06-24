@@ -53,6 +53,28 @@ int main() {
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
+
+        case 7:
+
+            break;
+        case 8:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            res = reader_select_from_id(arqEntrada, arqSaida, n);
+            break;
+
+        case 9:
+
+            break;
+        case 10:
+            scanf(" %s", arqEntrada);
+            scanf(" %s", arqSaida);
+            scanf(" %d", &n);
+
+            //res = reader_insert_into_bTree(arqEntrada, arqSaida, n);
+            break;
     }
 
     if(!res)

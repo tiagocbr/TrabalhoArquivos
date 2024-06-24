@@ -5,7 +5,7 @@
     #include <stdbool.h>
     #include <string.h>
     
-    typedef long long ll
+    typedef long long ll;
     typedef struct arvore_b ARVORE_B;
 
     ARVORE_B* arvore_criar();

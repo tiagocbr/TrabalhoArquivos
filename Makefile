@@ -1,8 +1,11 @@
-all: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o programaTrab.o
-	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o -Wall -std=c99 -o programaTrab
+all: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o programaTrab.o arvore_b.o
+	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o arvore_b.o -Wall -std=c99 -o programaTrab
 
 run: all
 	./programaTrab
+
+arvore_b.o: arvore_b.c
+	gcc -c arvore_b.c -o arvore_b.o
 
 programaTrab.o: programaTrab.c
 	gcc -c programaTrab.c -o programaTrab.o

@@ -35,10 +35,10 @@ void indices_escreve_cabecalho(ARVORE_B *arvore, FILE *indices) {
     const char *lixo = "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"; 
 
     // Escrevendo o cabeçalho
-    fwrite(arvore->status, sizeof(char), 1, indices);
-    fwrite(arvore->RRN_raiz, sizeof(int), 1, indices);
-    fwrite(arvore->proxRRN, sizeof(int), 1, indices);
-    fwrite(arvore->nroChaves, sizeof(int), 1, indices);
+    fwrite(&arvore->status, sizeof(char), 1, indices);
+    fwrite(&arvore->RRN_raiz, sizeof(int), 1, indices);
+    fwrite(&arvore->proxRRN, sizeof(int), 1, indices);
+    fwrite(&arvore->nroChaves, sizeof(int), 1, indices);
     fwrite(lixo, 47, 1, indices);
     return;
 }
@@ -51,13 +51,13 @@ void ajustaCabecalho(ARVORE_B *arvore, FILE *indices, int novaRaiz, int casoDaIn
     // Inserção em um nó pré-existente
     if(casoDaInsercao == 0) {
         fseek(indices, 9, SEEK_SET);
-        fwrite(arvore->nroChaves, sizeof(int), 1, indices);
+        fwrite(&arvore->nroChaves, sizeof(int), 1, indices);
     }
     //Inserção com split (proxRRN já atualizado na RAM)
     else if(casoDaInsercao == 1) {
         fseek(indices, 5, SEEK_SET);
-        fwrite(arvore->proxRRN, sizeof(int), 1, indices);
-        fwrite(arvore->nroChaves, sizeof(int), 1, indices);
+        fwrite(&arvore->proxRRN, sizeof(int), 1, indices);
+        fwrite(&arvore->nroChaves, sizeof(int), 1, indices);
 
     }
     // Caso em que houve split e criamos uma nova raiz
@@ -65,9 +65,9 @@ void ajustaCabecalho(ARVORE_B *arvore, FILE *indices, int novaRaiz, int casoDaIn
         arvore->RRN_raiz = novaRaiz;
         
         fseek(indices, 4, SEEK_SET);
-        fwrite(arvore->RRN_raiz, sizeof(int), 1, indices);
-        fwrite(arvore->proxRRN, sizeof(int), 1, indices);
-        fwrite(arvore->nroChaves, sizeof(int), 1, indices);
+        fwrite(&arvore->RRN_raiz, sizeof(int), 1, indices);
+        fwrite(&arvore->proxRRN, sizeof(int), 1, indices);
+        fwrite(&arvore->nroChaves, sizeof(int), 1, indices);
     }
 }
 
@@ -80,16 +80,16 @@ bool indices_escreve_registro(FILE *indices, NO no, int RRN_NO) {
 
     // Escrevendo o nó
     fseek(indices, offset, SEEK_SET);
-    fwrite(no.altura_no, sizeof(int), 1, indices);
-    fwrite(no.n_chaves, sizeof(int), 1, indices);
+    fwrite(&no.altura_no, sizeof(int), 1, indices);
+    fwrite(&no.n_chaves, sizeof(int), 1, indices);
     
     for(int i = 0; i < 3; i++) {
-        fwrite(no.elementos[i].chave, sizeof(int), 1, indices);
-        fwrite(no.elementos[i].offset, sizeof(long long), 1, indices);
+        fwrite(&no.elementos[i].chave, sizeof(int), 1, indices);
+        fwrite(&no.elementos[i].offset, sizeof(long long), 1, indices);
     }
 
     for(int i = 0; i < 4; i++) {
-        fwrite(no.RRN_filhos[i], sizeof(int), 1, indices);
+        fwrite(&no.RRN_filhos[i], sizeof(int), 1, indices);
     }
 
     //ajustarCabecalho(arvore, indices, casoDaInsercao);
@@ -118,9 +118,10 @@ ARVORE_B* arvore_criar(char* indices){
         raiz.elementos[i].chave = -1;
         raiz.elementos[i].offset = -1;
     }
-    indices_escreve_registro(indices,raiz,0);
+    indices_escreve_registro(arquivo,raiz,0);
 
     strcpy(arvore->indices,indices);
+    fclose(arquivo);
     return arvore;
 }
 
@@ -131,7 +132,7 @@ void arvore_destruir(ARVORE_B** arvore){
 
 // Função auxiliar que, dado um RRN, busca o nó correspondente no arquivo de índices
 // e o instancía no memória.
-NO criar_no(char *indices, int RRN_NO) {
+NO criar_no(FILE *indices, int RRN_NO) {
     NO novoNo;
     int offset;     // Recebe o offset exato do nó a partir de RRN_NO
 
@@ -139,8 +140,8 @@ NO criar_no(char *indices, int RRN_NO) {
 
     //Saltando para a posição do nó
     fseek(indices, offset, SEEK_SET);
-    fread(novoNo.altura_no, sizeof(int), 1, indices);
-    fread(novoNo.n_chaves, sizeof(int), 1, indices);
+    fread(&novoNo.altura_no, sizeof(int), 1, indices);
+    fread(&novoNo.n_chaves, sizeof(int), 1, indices);
     
     // Lendo todos as chaves (elementos) do nó autal
     for(int i = 0; i < 3; i++) {
@@ -285,7 +286,7 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
             
 
             if(no.altura_no == 0){//terá que criar um novo nó para ser a nova raiz a árvore
-                int RRN_raiz = get_prox_RRN(indices);
+                int RRN_raiz = get_prox_RRN(arvore);
                 set_prox_RRN(arvore,RRN_raiz+1);
                 NO nova_raiz;
                 nova_raiz.altura_no=no.altura_no+1;

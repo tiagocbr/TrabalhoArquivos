@@ -15,6 +15,6 @@
     ll arvore_buscar(ARVORE_B* arvore, int chave);
 
 
-    void arvore_inserir(ARVORE_B* arvore, int chave, ll offset);
+    bool arvore_inserir(ARVORE_B* arvore, int chave, ll offset);
 
 #endif

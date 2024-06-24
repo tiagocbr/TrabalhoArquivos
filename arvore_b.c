@@ -343,6 +343,8 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
     int* RRN_filhos = no.RRN_filhos;
 
     for(int i=0;i<no.n_chaves;i++){
+        elem empty = {-1,-1};
+        if(elementos[i].chave==chave)return empty;
         if(elementos[i].chave>chave || i == no.n_chaves - 1){
             ll RRN_filho = RRN_filhos[i];
             //condicao para o elemento ser inserido no filho mais a direita
@@ -380,9 +382,12 @@ bool arvore_inserir(ARVORE_B* arvore,int chave,ll offset){
         return false;
 
     set_status_cabecalho(arvore, arquivo, '0');
-    arvore_inserir_recursivo(arvore->RRN_raiz,chave, offset,arquivo, arvore);
+    elem res = arvore_inserir_recursivo(arvore->RRN_raiz,chave, offset,arquivo, arvore);
+
+   
 
     set_status_cabecalho(arvore, arquivo, '1');
     fclose(arquivo);
+    if(res.chave==-1)return false;
     return true;
 }

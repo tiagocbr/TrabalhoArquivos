@@ -36,7 +36,9 @@
     // Insere novos registros no arquivo principal e no arquivo de índices
     // A inserção usa a estratégia best fit, buscando reaproveitar registros lógicamente
     // removidos no arquivo principal
-    bool reader_insert_into(char* binario,char* indice,int n); 
+    bool reader_insert_into(char* binario,char* indice,int n);
+
+    bool create_index_arvore_B(char* binario,char* indice);
 
     void test();
 

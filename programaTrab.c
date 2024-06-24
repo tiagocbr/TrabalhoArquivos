@@ -53,6 +53,12 @@ int main() {
             scanf(" %d",&n);
             res = reader_insert_into(arqEntrada,arqSaida,n);
             break;
+        case 7:
+            scanf(" %s", arqEntrada);
+            scanf(" %s",arqSaida);
+            res = create_index_arvore_B(arqEntrada,arqSaida);
+            break;
+            
     }
 
     if(!res)

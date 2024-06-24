@@ -734,8 +734,9 @@ int inserir_arquivo_principal(FILE* arquivo,REGISTRO* reg,long long *byte){
 
 // Função que realiza novas inserções no arquivo principal, retornando o que deve
 // ser inserido em um arquivo de índices (tando índice simples como árvore B)
-bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices){
+bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices, ARVORE_B* arvore){
     FILE* arquivo;               // Ponteiro para o arquivo
+    int inseridos = 0;           // Retorna os registros que realmente foram inseridos
     int reaproveitados = 0;      // Controla a qntd de registros reaproveitados pela estratégia best fit
     REGISTRO r;                  // Guarda os novos registros a serem inseridos
     char strAux[10];             // Auxiliar para tratar registros fixos com valor NULO
@@ -744,7 +745,7 @@ bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices){
     
     // Abrindo e verificando a consistência do arquivo binário principal
     arquivo = fopen(binario,"rb+");
-    if(!consistente(arquivo))return false;
+    if(!consistente(arquivo))return 0;
 
     // Setando o status para inconsistente como medida preventiva
     set_status_arquivo(arquivo, '0');
@@ -789,15 +790,19 @@ bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices){
 
         r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
 
-        // inserindo no arquivo principal e guardando o byte que foi inserido para o vetor de índices
-        reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
-        indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
-        libera_registro(r);
+        if(arvore_buscar(arvore, r.id) == -1) {
+
+            // inserindo no arquivo principal e guardando o byte que foi inserido para o vetor de índices
+            reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
+            indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
+            inseridos++;
+            libera_registro(r);
+        }
     }
 
     //atualizando  o n_registros e o n_registros_removidos do arquivo
     CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
-    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+n - regInvalido);
+    cabecalho_set_nroRegArq(cabecalho,cabecalho_get_nroRegArq(cabecalho)+inseridos - regInvalido);
     cabecalho_set_nroRegRem(cabecalho,cabecalho_get_nroRegRem(cabecalho)-reaproveitados);
     escreve_cabecalho(arquivo,cabecalho);
     cabecalho_apagar(&cabecalho);
@@ -808,12 +813,12 @@ bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices){
 
     // Desalocando registros e retornando
     cabecalho_apagar(&cabecalho);
-    return true;
+    return inseridos;
 }
 
 bool reader_insert_into(char *binario, char *indice, int n) {
     VETREGISTROI *vetor_indices; // Vetor para carregar o arquivo de índices
-    bool res;
+    int res;
 
     // Criando o arquivo de índices
     reader_create_index(binario, indice);
@@ -822,8 +827,8 @@ bool reader_insert_into(char *binario, char *indice, int n) {
         return false;
 
     // Chamando a função de inserção
-    res = reader_insert(binario, n, vetor_indices);
-    if(!res) {
+    res = reader_insert(binario, n, vetor_indices, NULL);
+    if(res != 0) {
         indice_destruir(&vetor_indices);
         return res;
     }
@@ -858,11 +863,11 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
 
     // Abrindo ambos arquivos para leitura
     arqBinario = fopen(binario, "rb");
-    if(!consistente(arqBinario))
+    if(!consistente(arqBinario)) {
         return false;
+    }
 
     // Criando o arquivo de índices para a busca
-    // CHAMAR FUNCIONALIDADE 7
     arqIndice = fopen(indice, "rb");
     if(!consistente(arqIndice))
         return false;
@@ -873,8 +878,8 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
 
     // Loop para as buscas
     for(int i = 0; i < n; i++) {
+        scanf(" id %d", &chaveBuscada);
         printf("Busca %d\n\n", i + 1);
-        scanf("id %d", &chaveBuscada);
 
         offSetBuscado = arvore_buscar(arvore, chaveBuscada);
         if(offSetBuscado != -1) {
@@ -882,7 +887,7 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
             imprime_registro(r);
         }
         else
-            printf("Registro inexistente\n");
+            printf("Registro inexistente\n\n");
     }
     return true;
 }
@@ -892,7 +897,7 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
     REGISTROI regi;              // Auxiliar que recebe um regsitroi do vetor
     FILE *arqIndice;
     ARVORE_B *arvore;
-    bool res;
+    int res;
 
     // Criando o árquivo de índices e instanciando o cabeçalho na memória para a inserção
     // CHAMAR FUNCIONALIDADE 7
@@ -910,20 +915,22 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
         return false;
 
     // Chamando a função de inserção
-    res = reader_insert(binario, n, registrosi);
-    if(!res) {
+    res = reader_insert(binario, n, registrosi, arvore);
+    if(res != 0) {
+        arvore_destruir(&arvore);
         indice_destruir(&registrosi);
         return res;
     }
 
     // Reescrevendo o arquivo de índices
-    for(int i = 0; i < n; i++) {
+    for(int i = 0; i < res; i++) {
         regi = indice_get_registroi_vetor(registrosi, i);
         res = arvore_inserir(arvore, regi.id, regi.byteOffset);
     }
     indice_destruir(&registrosi);
-    if(!res)
-        return res;
+    arvore_destruir(&arvore);
+    //if(!res)
+       // return res;
 
     // Chamando binario na tela para os arquivos
     binarioNaTela(binario);

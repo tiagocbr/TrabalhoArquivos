@@ -939,10 +939,11 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
 }
 
 bool create_index_arvore_B(char *binario,char* indice ){
+    FILE* arqq = fopen(indice,"wb");
+    fclose(arqq);
     long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
     REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
     int total;                 // Guarda o número total de registros no arquivo de dados
-
     // Abrindo e verificando o arquivo binário para leitura
     FILE *arquivo = fopen(binario, "rb");
     if(!consistente(arquivo)) return false;
@@ -951,13 +952,12 @@ bool create_index_arvore_B(char *binario,char* indice ){
     total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
 
     ARVORE_B* arvore = arvore_criar(indice);
-    bool res=true;
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
     while(total--) {
 
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
-            res = arvore_inserir(arvore,regDados.id,offsetReg);
+            arvore_inserir(arvore,regDados.id,offsetReg);
         }
 
         // Atualizando o offset para o próximo registro
@@ -965,13 +965,13 @@ bool create_index_arvore_B(char *binario,char* indice ){
         libera_registro(regDados);
     }
 
-    // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
+    // Fechando o arquivo binário 
     fclose(arquivo);
 
     // Desalocando a memória e retorno da funcionalidade
     cabecalho_apagar(&cabecalho);
     binarioNaTela(indice);
-    return res;
+    return true;
 }
 
 bool funcionalidade_9(char* binario,char* indice, int n){

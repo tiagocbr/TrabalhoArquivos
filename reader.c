@@ -887,7 +887,7 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
     return true;
 }
 
-bool reader_insert__into_bTree(char *binario, char *indice, int n) {
+bool reader_insert_into_bTree(char *binario, char *indice, int n) {
     VETREGISTROI *registrosi;    // Vetor dos registros a serem adcionados na árvore b
     REGISTROI regi;              // Auxiliar que recebe um regsitroi do vetor
     FILE *arqIndice;

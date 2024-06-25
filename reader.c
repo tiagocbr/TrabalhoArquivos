@@ -285,6 +285,7 @@ bool busca_no_arqDados(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
     char* nomeClube = registro_buscado.nomeClube;
     bool id_encontrado=false;
     bool ok=false;
+    int ct=0;
     // Salvando o numero de registros e registros removidos
     CABECALHO* cabecalho = cabecalho_from_arquivo(arquivo);
     int total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
@@ -323,6 +324,7 @@ bool busca_no_arqDados(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
         if(ok) {
             imprime_registro(r);
             libera_registro(r);
+            ct++;
             ok=true;
         }
         else 
@@ -331,7 +333,8 @@ bool busca_no_arqDados(FILE* arquivo,REGISTRO registro_buscado,int *procurado){
             return ok;     // Parando a busca caso o id tenha sido encontrado
        }
     }
-    return ok;
+    if(ct == 0)return false;
+    else return true;
     
 }
 
@@ -967,13 +970,12 @@ bool create_index_arvore_B(char *binario,char* indice ){
     return true;
 }
 
-bool funcionalidade_9(char* binario,char* indice, int n){
+bool select_where_BTree(char* binario,char* indice, int n){
     // Criando o arquivo de índices
     ARVORE_B* arvore = arvore_carregar_cabecalho(indice);
     
     FILE* arquivo = fopen(binario,"rb");
     if(!consistente(arquivo))return 0;  
-    set_status_arquivo(arquivo, '0');
     
     int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
     char campo[20]; //variavel que vai receber o camp obuscado 
@@ -1024,7 +1026,8 @@ bool funcionalidade_9(char* binario,char* indice, int n){
         }
     
         if(procurado[1]==0){
-            busca_no_arqDados(arquivo,registro_buscado,procurado);
+            bool encontrado = busca_no_arqDados(arquivo,registro_buscado,procurado);
+            if(!encontrado)printf("Registro inexistente.\n");
         }
         else{
             int id=registro_buscado.id;
@@ -1046,7 +1049,6 @@ bool funcionalidade_9(char* binario,char* indice, int n){
     }
   
     //fechando arquivo
-    set_status_arquivo(arquivo, '1');
     fclose(arquivo);
 
     return true;

@@ -47,7 +47,10 @@
     // criado com uma árvore b
     bool reader_select_from_id(char *binario, char *indice, int n);
 
-    bool funcionalidade_9(char* binario,char* indice, int n);
+    // Fucionalidade 9
+    // Busca elementos a partir do id ou de outros parametros
+    // Se for busca por id usa a Btree
+    bool select_where_BTree(char* binario,char* indice, int n);
 
 
     // Funcionalidade 10

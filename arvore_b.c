@@ -92,33 +92,33 @@ ARVORE_B* arvore_criar(char* indices){
     return arvore;
 }
 
-// Função auxiliar que, dado um arquivo de índices aberto e consistente, intancía em
-// memória o cabeçalho do arquivo para utilização nas funcionalidades
-ARVORE_B *arvore_carregar_cabecalho(FILE *arquivo, char *nomeArquivo) {
+// Função auxiliar que, instancia o cabeçalho de um arquivo de índices já criado
+ARVORE_B *arvore_carregar_cabecalho(char *indices) {
     ARVORE_B *arvore;
+    FILE *arquivo;
 
-    // Voltando o ponteiro para o início, se necessário
+    // Abrino e verificando o arquivo
+    arquivo = fopen(indices, "rb");
+    if(!consistente(arquivo))
+        return NULL;
+
     if(ftell(arquivo) != 0)
         fseek(arquivo, 0, SEEK_SET);
 
     // Alocando memória para a árvore
     arvore = (ARVORE_B *) malloc(sizeof(ARVORE_B));
-    if(arvore == NULL)
+    if(arvore == NULL) {
+        fclose(arquivo);
         return NULL;
+    }
 
     fread(&arvore->status, sizeof(char), 1, arquivo);
     fread(&arvore->RRN_raiz, sizeof(int), 1, arquivo);
     fread(&arvore->proxRRN, sizeof(int), 1, arquivo);
     fread(&arvore->nroChaves, sizeof(int), 1, arquivo);
-    strcpy(arvore->indices, nomeArquivo);
+    strcpy(arvore->indices, indices);
 
-    /*
-    printf("status: %c\n", arvore->status);
-    printf("rrnRaiz: %d\n", arvore->RRN_raiz);
-    printf("proxRRn: %d\n", arvore->proxRRN);
-    printf("nroChaves: %d\n", arvore->nroChaves);
-    printf("indices: %s\n\n", arvore->indices);
-    */
+    fclose(arquivo);
     return arvore;
 }
 
@@ -190,6 +190,7 @@ ll arvore_buscar(ARVORE_B* arvore,int chave){
 
     valorBuscado = arvore_buscar_recursivo(arvore->RRN_raiz,chave,arquivo);
     fclose(arquivo);
+
     return valorBuscado; 
 }
 
@@ -374,6 +375,7 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
 
 
     NO no = criar_no(indices,RRN_NO);
+    imprimeNO(no);
 
     elem* elementos = no.elementos;
     int* RRN_filhos = no.RRN_filhos;
@@ -433,9 +435,15 @@ void imprimeNO(NO no) {
     printf("altura: %d\n", no.altura_no);
     printf("n_chaves: %d\n", no.n_chaves);
     
-    printf("RRN_FILHOS:\n");
+    printf("RRN_FILHOS: ");
     for(int i = 0; i < 4; i++) {
         printf("%d ", no.RRN_filhos[i]);
+    }
+    printf("\n\n");
+
+    printf("ELEMENTOS: ");
+    for(int i = 0; i < 3; i++) {
+        printf("%d ", no.elementos[i].chave);
     }
     printf("\n\n");
 }

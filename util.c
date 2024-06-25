@@ -135,3 +135,7 @@ void imprimeIndice(char *indice) {
     }
     printf("\n");
 }
+
+bool registroiNulo(REGISTROI regi) {
+    return ((regi.byteOffset == -1 && regi.id == -1) ? true: false);
+}

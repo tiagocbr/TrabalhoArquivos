@@ -221,19 +221,22 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
         elem* elementos = no.elementos;
         int* RRN_filhos = no.RRN_filhos;
         int chave = new_elem.chave;
+        bool ok=true;
         if(no.n_chaves < 3){ //insere nesse NO o novo elemento, sem split
+            //printf("Inserção sem split\n");
             no.n_chaves++;
             //rearranjando os elementos
             for(int j = no.n_chaves - 2; j>=0; j--){
                 if(elementos[j].chave > chave){
-                    elementos[j + 1] = elementos[j]; // O que ocorre no caso que 0 é shiftado? (e deveríamos inserir em 0)
+                    elementos[j + 1] = elementos[j]; 
                 }
                 else{
                     elementos[j+1] = new_elem;
+                    ok=false;
                     break;
                 }
             }
-            elementos[0] = new_elem; // If new_elem is the smallest
+            if(ok)elementos[0] = new_elem; // If new_elem is the smallest
 
             //rearranjando os filhos
             for(int j = no.n_chaves - 1; j>=0; j--){
@@ -246,12 +249,20 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
                 }
             }
 
+            if(no.altura_no==0){
+                for(int i=0;i<4;i++){
+                    RRN_filhos[i]=-1;
+                }
+            }
+            // for(int i=0;i<4;i++)printf("%d ",RRN_filhos[i]);
+            // for(int i=0;i<3;i++)printf("%d %lld\n",elementos[i].chave,elementos[i].offset);
+
             indices_escreve_registro(indices, no, RRN_NO);
             return empty;
             
         }
         else{ //insere com split    --> sempre atualizar o proxRRN
-
+            //printf("Inserção com split\n");
 
             int prox_RRN = get_prox_RRN(arvore);
             set_prox_RRN(arvore, prox_RRN+1);
@@ -344,6 +355,7 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
 elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVORE_B* arvore){
     elem empty = {-1,-1};
     if(arvore->nroChaves==1){ //arvore vazia, inserção do primeiro elemento
+        //printf("Insercao na raiz\n");
         set_prox_RRN(arvore,1);
         arvore->RRN_raiz = 0;
         elem new_elem;
@@ -372,14 +384,14 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
             return empty;
         }
         if(elementos[i].chave>chave || i == no.n_chaves - 1){
-            ll RRN_filho = RRN_filhos[i];
+            int RRN_filho = RRN_filhos[i];
             //condicao para o elemento ser inserido no filho mais a direita
             if(i == no.n_chaves - 1 && elementos[i].chave < chave){
                 RRN_filho = RRN_filhos[i+1];
             }
 
             if(RRN_filho==-1){ //A inserção vai ocorrer agora, pois chegamos em uma folha
-
+                //printf("Inserindo no no %d",RRN_NO);
                 //Criando o elemento que vai ser inserido
                 elem new_elem;
                 new_elem.chave = chave;
@@ -388,8 +400,8 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
                 return inserir_elemento_em_no(no, new_elem, RRN_NO, arvore,indices);
 
             }
-
             else { //a inserção ocorrerá no filho
+                //printf("Passando pelo no %d e indo para o filho %d\n",RRN_NO,RRN_filho);
                 elem elemento_a_ser_inserido = arvore_inserir_recursivo(RRN_filho,chave,offset, indices, arvore);
                 if(elemento_a_ser_inserido.chave == -1) return elemento_a_ser_inserido;
 

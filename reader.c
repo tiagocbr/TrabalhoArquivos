@@ -959,7 +959,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
             arvore_inserir(arvore,regDados.id,offsetReg);
-            printf("%d\n",regDados.id);
+            //printf("%d\n",regDados.id);
         }
 
         // Atualizando o offset para o próximo registro

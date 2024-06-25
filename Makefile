@@ -30,8 +30,8 @@ eraseBin:
 	rm *.bin
 
 debug7:
-	cp arquivos/files/binario8.bin .
-	cp arquivos/files/indice8.bin .
+	cp arquivos/files/binario1.bin .
+	cp arquivos/files/indice1.bin .
 
 allValgrind: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o programaTrab.o
 	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o -g -Wall -std=c99 -o programaTrab

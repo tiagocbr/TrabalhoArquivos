@@ -17,6 +17,7 @@ REGISTROI indice_criar_registro(int id, long long offset) {
 
 VETREGISTROI *indice_criar_vetor(int tamanho) {
     VETREGISTROI *novoVetor;
+    REGISTROI regNulo = {-1, -1};
 
     // Alocando memória para o tipo VETREGISTROI
     novoVetor = (VETREGISTROI *) malloc(sizeof(VETREGISTROI));
@@ -31,6 +32,11 @@ VETREGISTROI *indice_criar_vetor(int tamanho) {
     }
     novoVetor->espacoMax = tamanho;
     novoVetor->nReg = 0;
+
+    // Inicializando com o registro nulo
+    for(int i = 0; i < tamanho; i++) {
+        indice_inserir(novoVetor, regNulo);
+    }
 
     return novoVetor;
 }

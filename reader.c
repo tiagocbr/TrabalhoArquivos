@@ -742,6 +742,7 @@ bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices, ARVORE_B* 
     char strAux[10];             // Auxiliar para tratar registros fixos com valor NULO
     long long byte;              // Guarda o byteoffest de cada registro no arquivo de dados para criar o registroi
     int regInvalido = 0;         // Guarda o número de registros invalidos que não foram inseridos
+    long long jaInserido;        // Recebe os resultados das buscas para verificar se o registro já foi inserido
     
     // Abrindo e verificando a consistência do arquivo binário principal
     arquivo = fopen(binario,"rb+");
@@ -790,8 +791,14 @@ bool reader_insert(char *binario, int n, VETREGISTROI *vetor_indices, ARVORE_B* 
 
         r.tamanhoRegistro = 33 + r.tamNomeJog + r.tamNacionalidade + r.tamNomeClube;
 
-        if(arvore_buscar(arvore, r.id) == -1) {
+        // Verificando se o registro já existe no arquivo de índices correpondente
+        if(arvore != NULL) {
+            jaInserido = (long long) arvore_buscar(arvore, r.id);
+        }
+        else
+            jaInserido = (long long) indice_buscar(vetor_indices, r.id);
 
+        if(jaInserido == -1) {
             // inserindo no arquivo principal e guardando o byte que foi inserido para o vetor de índices
             reaproveitados+=inserir_arquivo_principal(arquivo, &r, &byte);
             indice_inserir(vetor_indices, indice_criar_registro(r.id, byte));
@@ -856,7 +863,6 @@ REGISTRO get_registro_offset(FILE *binario, long long offset) {
 bool reader_select_from_id(char *binario, char *indice, int n) {
     REGISTRO r;
     FILE *arqBinario;
-    FILE *arqIndice;
     ARVORE_B *arvore;
     long long offSetBuscado;
     int chaveBuscada;
@@ -866,13 +872,9 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
     if(!consistente(arqBinario)) {
         return false;
     }
-
-    // Criando o arquivo de índices para a busca
-    arqIndice = fopen(indice, "rb");
-    if(!consistente(arqIndice))
-        return false;
     
-    arvore = arvore_carregar_cabecalho(arqIndice, indice);
+    // Instanciando o cabeçalho do arquivo de índices na memória
+    arvore = arvore_carregar_cabecalho(indice);
     if(arvore == NULL)
         return false;
 
@@ -895,17 +897,11 @@ bool reader_select_from_id(char *binario, char *indice, int n) {
 bool reader_insert_into_bTree(char *binario, char *indice, int n) {
     VETREGISTROI *registrosi;    // Vetor dos registros a serem adcionados na árvore b
     REGISTROI regi;              // Auxiliar que recebe um regsitroi do vetor
-    FILE *arqIndice;
     ARVORE_B *arvore;
     int res;
-
-    // Criando o árquivo de índices e instanciando o cabeçalho na memória para a inserção
-    // CHAMAR FUNCIONALIDADE 7
-    arqIndice = fopen(indice, "rb+");
-    if(!consistente(arqIndice))
-        return false;
     
-    arvore = arvore_carregar_cabecalho(arqIndice, indice);
+    // Instanciando o cabeçalho da árvore para as inserções
+    arvore = arvore_carregar_cabecalho(indice);
     if(arvore == NULL)
         return false;
 
@@ -916,11 +912,6 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
 
     // Chamando a função de inserção
     res = reader_insert(binario, n, registrosi, arvore);
-    if(res != 0) {
-        arvore_destruir(&arvore);
-        indice_destruir(&registrosi);
-        return res;
-    }
 
     // Reescrevendo o arquivo de índices
     for(int i = 0; i < res; i++) {
@@ -929,8 +920,6 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
     }
     indice_destruir(&registrosi);
     arvore_destruir(&arvore);
-    //if(!res)
-       // return res;
 
     // Chamando binario na tela para os arquivos
     binarioNaTela(binario);
@@ -949,12 +938,12 @@ bool create_index_arvore_B(char *binario,char* indice ){
     CABECALHO *cabecalho = cabecalho_from_arquivo(arquivo);
 
     total = cabecalho_get_nroRegArq(cabecalho) + cabecalho_get_nroRegRem(cabecalho);
-
+    
     ARVORE_B* arvore = arvore_criar(indice);
+
     bool res=true;
     // Percorrendo o binário, criando os regsitros no vetor de registros do índice e o ordenando ao final
     while(total--) {
-
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
             res = arvore_inserir(arvore,regDados.id,offsetReg);
@@ -975,9 +964,8 @@ bool create_index_arvore_B(char *binario,char* indice ){
 }
 
 bool funcionalidade_9(char* binario,char* indice, int n){
-    FILE* arq = fopen(indice,"rb");
     // Criando o arquivo de índices
-    ARVORE_B* arvore = arvore_carregar_cabecalho(arq, indice);
+    ARVORE_B* arvore = arvore_carregar_cabecalho(indice);
     
     FILE* arquivo = fopen(binario,"rb");
     if(!consistente(arquivo))return 0;  

@@ -21,7 +21,8 @@
     // Apartir de um registro de dados lido
     REGISTROI indice_criar_registro(int id, long long offset);
 
-    // Função que cria um VETREGISTROI vazio a partir de um tamanho inicial
+    // Função que cria um VETREGISTROI a partir de um tamanho inicial
+    // Todos os seus elementos são inicializados como um registroi nulo
     VETREGISTROI *indice_criar_vetor(int tamanho);
 
     //Conjunto de funções que retornam os valores de um VETREGISTROI

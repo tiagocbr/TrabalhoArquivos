@@ -254,7 +254,6 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
                     break;
                 }
             }
-<<<<<<< HEAD
             //elementos[0] = new_elem; // If new_elem is the smallest
             */
            for(int j = no.n_chaves - 2; j >= -1; j--) {
@@ -268,41 +267,28 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
                     break;
                 }
            }
-=======
             if(ok)elementos[0] = new_elem; // If new_elem is the smallest
->>>>>>> a7b9d7eb52453ea2dacb24136f803a1a83f114fd
 
             //rearranjando os filhos
-            
+            /*
             for(int j = no.n_chaves - 1; j>=0; j--){
                 if(elementos[j].chave != chave){
                     RRN_filhos[j+1] = RRN_filhos[j];
                 }
                 else{
-                    RRN_filhos[j+1] = RRN_filhos[j];
+                    RRN_filhos[j+1] = get_prox_RRN(arvore) - 1;
                     break;
                 }
             }
-            
-
-            if(no.altura_no==0){
-                for(int i=0;i<4;i++){
-                    RRN_filhos[i]=-1;
-                }
-            }
-            // for(int i=0;i<4;i++)printf("%d ",RRN_filhos[i]);
-            // for(int i=0;i<3;i++)printf("%d %lld\n",elementos[i].chave,elementos[i].offset);
+            */
 
             indices_escreve_registro(indices, no, RRN_NO);
             return empty;
             
         }
         else{ //insere com split    --> sempre atualizar o proxRRN
-<<<<<<< HEAD
             printf("Oh meu deus, um split!");
-=======
             //printf("Inserção com split\n");
->>>>>>> a7b9d7eb52453ea2dacb24136f803a1a83f114fd
 
             int prox_RRN = get_prox_RRN(arvore);
             set_prox_RRN(arvore, prox_RRN+1);
@@ -401,11 +387,8 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
     printf("Aquiii\n");
 
     if(arvore->nroChaves==1){ //arvore vazia, inserção do primeiro elemento
-<<<<<<< HEAD
         printf("Primeiro caso\n\n");
-=======
         //printf("Insercao na raiz\n");
->>>>>>> a7b9d7eb52453ea2dacb24136f803a1a83f114fd
         set_prox_RRN(arvore,1);
         arvore->RRN_raiz = 0;
         elem new_elem;

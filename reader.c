@@ -36,9 +36,10 @@ void imprime_registro(REGISTRO r) {
 
     // Imprimindo todos os registros não logicamente removidos
     if(r.removido == '0') {
-        printf("Nome do Jogador: %s\n", r.nomeJogador);
-        printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        printf("Clube do Jogador: %s\n\n", r.nomeClube);  
+        //printf("Nome do Jogador: %s\n", r.nomeJogador);
+        //printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
+        //printf("Clube do Jogador: %s\n\n", r.nomeClube);
+        printf("%d\n",r.id);  
     }
 }
 
@@ -958,6 +959,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
             arvore_inserir(arvore,regDados.id,offsetReg);
+            printf("%d\n",regDados.id);
         }
 
         // Atualizando o offset para o próximo registro
@@ -971,6 +973,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
     // Desalocando a memória e retorno da funcionalidade
     cabecalho_apagar(&cabecalho);
     binarioNaTela(indice);
+    arvore_destruir(&arvore);
     return true;
 }
 

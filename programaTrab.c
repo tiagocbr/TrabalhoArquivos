@@ -8,6 +8,7 @@ Tiago Chaves Bezerra Rocha       - 14609637
 #include "reader.h"
 #include "indiceSimples.h"
 #include "funcoes_fornecidas.h"
+#include "arvore_b.h"
 
 int main() {
     int opCode;           // armazena a funcionalidade escolhida pelo usuário
@@ -83,6 +84,15 @@ int main() {
 
             res = reader_insert_into_bTree(arqEntrada, arqSaida, n);
             break;
+        case 20:
+            FILE* arquivo = fopen("indice1.bin","rb");
+            ARVORE_B* arvore =  arvore_carregar_cabecalho(arquivo,"indice1.bin");
+            imprimeCabecalho(arvore);
+            imprime_arvore(arvore,arquivo);
+            fclose(arquivo);
+            arvore_destruir(&arvore);
+            break;
+
     }
 
     if(!res)

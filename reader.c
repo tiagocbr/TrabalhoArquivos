@@ -36,9 +36,10 @@ void imprime_registro(REGISTRO r) {
 
     // Imprimindo todos os registros não logicamente removidos
     if(r.removido == '0') {
-        printf("Nome do Jogador: %s\n", r.nomeJogador);
-        printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        printf("Clube do Jogador: %s\n\n", r.nomeClube);  
+        //printf("Nome do Jogador: %s\n", r.nomeJogador);
+        //printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
+        //printf("Clube do Jogador: %s\n\n", r.nomeClube);
+        printf("%d\n",r.id);  
     }
 }
 
@@ -928,10 +929,11 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
 }
 
 bool create_index_arvore_B(char *binario,char* indice ){
+    FILE* arqq = fopen(indice,"wb");
+    fclose(arqq);
     long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
     REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
     int total;                 // Guarda o número total de registros no arquivo de dados
-
     // Abrindo e verificando o arquivo binário para leitura
     FILE *arquivo = fopen(binario, "rb");
     if(!consistente(arquivo)) return false;
@@ -946,7 +948,8 @@ bool create_index_arvore_B(char *binario,char* indice ){
     while(total--) {
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
-            res = arvore_inserir(arvore,regDados.id,offsetReg);
+            arvore_inserir(arvore,regDados.id,offsetReg);
+            printf("%d\n",regDados.id);
         }
 
         // Atualizando o offset para o próximo registro
@@ -954,13 +957,14 @@ bool create_index_arvore_B(char *binario,char* indice ){
         libera_registro(regDados);
     }
 
-    // Fechando o arquivo binário e abrindo o arquivo de índices para a escrita
+    // Fechando o arquivo binário 
     fclose(arquivo);
 
     // Desalocando a memória e retorno da funcionalidade
     cabecalho_apagar(&cabecalho);
     binarioNaTela(indice);
-    return res;
+    arvore_destruir(&arvore);
+    return true;
 }
 
 bool funcionalidade_9(char* binario,char* indice, int n){

@@ -36,10 +36,10 @@ void imprime_registro(REGISTRO r) {
 
     // Imprimindo todos os registros não logicamente removidos
     if(r.removido == '0') {
-        //printf("Nome do Jogador: %s\n", r.nomeJogador);
-        //printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        //printf("Clube do Jogador: %s\n\n", r.nomeClube);
-        printf("%d\n",r.id);  
+        printf("Nome do Jogador: %s\n", r.nomeJogador);
+        printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
+        printf("Clube do Jogador: %s\n\n", r.nomeClube);
+      
     }
 }
 
@@ -951,6 +951,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
         if(regDados.removido != '1') {
             printf("Inserção atual: %d\n",regDados.id);
             arvore_inserir(arvore,regDados.id,offsetReg);
+            //printf("%d\n",regDados.id);
         }
 
         // Atualizando o offset para o próximo registro

@@ -2,7 +2,7 @@ all: funcoes_fornecidas.o reader.o regCabecalho.o indiceSimples.o util.o program
 	gcc funcoes_fornecidas.o util.o reader.o regCabecalho.o indiceSimples.o programaTrab.o arvore_b.o -Wall -std=c99 -o programaTrab
 
 run: all
-	./programaTrab
+	./programaTrab > test.txt
 
 arvore_b.o: arvore_b.c
 	gcc -c arvore_b.c -o arvore_b.o

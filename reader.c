@@ -932,11 +932,12 @@ bool reader_insert_into_bTree(char *binario, char *indice, int n) {
 }
 
 bool create_index_arvore_B(char *binario,char* indice ){
-    FILE* arqq = fopen(indice,"wb");
-    fclose(arqq);
+    //FILE* arqq = fopen(indice,"wb");
+    //fclose(arqq);
     long long offsetReg = 25;  // Guarda o offset do registro atual no binário para salvá-lo no índice
     REGISTRO regDados;         // Variável para guardar os registros do arquivo de dados
     int total;                 // Guarda o número total de registros no arquivo de dados
+
     // Abrindo e verificando o arquivo binário para leitura
     FILE *arquivo = fopen(binario, "rb");
     if(!consistente(arquivo)) return false;
@@ -951,6 +952,7 @@ bool create_index_arvore_B(char *binario,char* indice ){
     while(total--) {
         regDados = ler_registro_binario(arquivo);
         if(regDados.removido != '1') {
+            printf("Inserção atual: %d\n",regDados.id);
             arvore_inserir(arvore,regDados.id,offsetReg);
             //printf("%d\n",regDados.id);
         }
@@ -974,9 +976,16 @@ bool select_where_BTree(char* binario,char* indice, int n){
     // Criando o arquivo de índices
     ARVORE_B* arvore = arvore_carregar_cabecalho(indice);
     
+    // Abrindo e verificando o arquivo binário
     FILE* arquivo = fopen(binario,"rb");
     if(!consistente(arquivo))return 0;  
     
+    // Verificando o arquivo de índices para o caso dele estar inconsistente
+    FILE *arqIndice = fopen(indice, "rb");
+    if(!consistente(arqIndice))
+        return false;
+    fclose(arqIndice);
+
     int procurado[6]; //variavel e controle para saber quais os campos estao sendo buscados
     char campo[20]; //variavel que vai receber o camp obuscado 
     int busca_total=0;  //variavel para saber o numero de registros deletados
@@ -993,7 +1002,7 @@ bool select_where_BTree(char* binario,char* indice, int n){
         registro_buscado.tamNomeJog=0;
         registro_buscado.tamNomeClube=0;
         registro_buscado.tamNacionalidade=0;
-        //recebendo os parametros da busca para deletar
+        //recebendo os parametros da busca 
         for(int j=0;j<params;j++){
             scanf(" %s",campo);
 

@@ -19,7 +19,6 @@
     bool arvore_inserir(ARVORE_B* arvore, int chave, ll offset);
 
     void imprime_arvore(ARVORE_B* arvore,FILE* indices);
-    ARVORE_B *arvore_carregar_cabecalho( char *nomeArquivo);
     void imprimeCabecalho(ARVORE_B *arv) ;
 
 #endif

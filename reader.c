@@ -36,10 +36,10 @@ void imprime_registro(REGISTRO r) {
 
     // Imprimindo todos os registros não logicamente removidos
     if(r.removido == '0') {
-        //printf("Nome do Jogador: %s\n", r.nomeJogador);
-        //printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
-        //printf("Clube do Jogador: %s\n\n", r.nomeClube);
-        printf("%d\n",r.id);  
+        printf("Nome do Jogador: %s\n", r.nomeJogador);
+        printf("Nacionalidade do Jogador: %s\n", r.nacionalidade);
+        printf("Clube do Jogador: %s\n\n", r.nomeClube);
+      
     }
 }
 

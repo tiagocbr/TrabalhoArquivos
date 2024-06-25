@@ -25,6 +25,23 @@ struct arvore_b{
 };
 
 
+void imprimeNO(NO no) {
+    printf("altura: %d\n", no.altura_no);
+    printf("n_chaves: %d\n", no.n_chaves);
+    
+    printf("RRN_FILHOS: ");
+    for(int i = 0; i < 4; i++) {
+        printf("%d ", no.RRN_filhos[i]);
+    }
+    printf("\n\n");
+
+    printf("ELEMENTOS: ");
+    for(int i = 0; i < 3; i++) {
+        printf("%d ", no.elementos[i].chave);
+    }
+    printf("\n\n");
+}
+
 // Função que efetivamente cria o arquivo de índices, escrevendo seu cabeçalho
 void indices_escreve_cabecalho(ARVORE_B *arvore, FILE *indices) {
     // Setando as variáveis do cabeçalho inicial
@@ -225,7 +242,7 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
         if(no.n_chaves < 3){ //insere nesse NO o novo elemento, sem split
             no.n_chaves++;
             //rearranjando os elementos
-            for(int j = no.n_chaves - 2; j>=0; j--){
+            /*for(int j = no.n_chaves - 2; j>=0; j--){
                 if(elementos[j].chave > chave){
                     elementos[j + 1] = elementos[j]; // O que ocorre no caso que 0 é shiftado? (e deveríamos inserir em 0)
                 }
@@ -234,25 +251,39 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
                     break;
                 }
             }
-            elementos[0] = new_elem; // If new_elem is the smallest
+            //elementos[0] = new_elem; // If new_elem is the smallest
+            */
+           for(int j = no.n_chaves - 2; j >= -1; j--) {
+                if(elementos[j].chave > chave) {
+                    elementos[j + 1] = elementos[j];
+                }
+                else if(j == -1)
+                    elementos[j + 1] = new_elem;
+                else {
+                    elementos[j+1] = new_elem;
+                    break;
+                }
+           }
 
             //rearranjando os filhos
+            
             for(int j = no.n_chaves - 1; j>=0; j--){
                 if(elementos[j].chave != chave){
                     RRN_filhos[j+1] = RRN_filhos[j];
                 }
                 else{
-                    RRN_filhos[j+1] = get_prox_RRN(arvore) - 1;
+                    RRN_filhos[j+1] = RRN_filhos[j];
                     break;
                 }
             }
+            
 
             indices_escreve_registro(indices, no, RRN_NO);
             return empty;
             
         }
         else{ //insere com split    --> sempre atualizar o proxRRN
-
+            printf("Oh meu deus, um split!");
 
             int prox_RRN = get_prox_RRN(arvore);
             set_prox_RRN(arvore, prox_RRN+1);
@@ -320,6 +351,9 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
 
             if(RRN_NO == arvore->RRN_raiz){//terá que criar um novo nó para ser a nova raiz a árvore
                 int RRN_raiz = get_prox_RRN(arvore);
+
+                printf("Nova raiz: %d\n\n", RRN_raiz);
+
                 set_prox_RRN(arvore,RRN_raiz+1);
                 NO nova_raiz;
                 nova_raiz.altura_no=no.altura_no+1;
@@ -344,7 +378,11 @@ elem inserir_elemento_em_no(NO no, elem new_elem, int RRN_NO, ARVORE_B* arvore,F
 
 elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVORE_B* arvore){
     elem empty = {-1,-1};
+
+    printf("Aquiii\n");
+
     if(arvore->nroChaves==1){ //arvore vazia, inserção do primeiro elemento
+        printf("Primeiro caso\n\n");
         set_prox_RRN(arvore,1);
         arvore->RRN_raiz = 0;
         elem new_elem;
@@ -369,6 +407,7 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
     int* RRN_filhos = no.RRN_filhos;
 
     for(int i=0;i<no.n_chaves;i++){
+        // Caso o elemento já exista na árvore
         if(elementos[i].chave==chave){
             arvore->nroChaves--;
             return empty;
@@ -400,6 +439,8 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
             }
         }
     }
+
+    return empty;
 }
 
 bool arvore_inserir(ARVORE_B* arvore,int chave,ll offset){
@@ -419,22 +460,7 @@ bool arvore_inserir(ARVORE_B* arvore,int chave,ll offset){
 
 
 // DEBUGS
-void imprimeNO(NO no) {
-    printf("altura: %d\n", no.altura_no);
-    printf("n_chaves: %d\n", no.n_chaves);
-    
-    printf("RRN_FILHOS: ");
-    for(int i = 0; i < 4; i++) {
-        printf("%d ", no.RRN_filhos[i]);
-    }
-    printf("\n\n");
 
-    printf("ELEMENTOS: ");
-    for(int i = 0; i < 3; i++) {
-        printf("%d ", no.elementos[i].chave);
-    }
-    printf("\n\n");
-}
 
 void imprime_recursivo(int RRN,FILE *indices){
     if(RRN==-1)return;

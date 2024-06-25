@@ -375,7 +375,7 @@ elem arvore_inserir_recursivo(int RRN_NO,int chave,ll offset, FILE* indices,ARVO
 
 
     NO no = criar_no(indices,RRN_NO);
-    imprimeNO(no);
+    //imprimeNO(no);
 
     elem* elementos = no.elementos;
     int* RRN_filhos = no.RRN_filhos;
